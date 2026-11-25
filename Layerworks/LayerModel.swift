@@ -46,6 +46,8 @@ nonisolated struct Layer: Identifiable, Codable, Equatable, Sendable {
     var gridSize: Int?
     /// Turn in degrees around the frame's center (045: Rotation slider). nil = upright.
     var rotation: Double?
+    /// Blend with the layers below (039 Blend): a Core Graphics blend mode name; nil = normal.
+    var blendMode: String?
     /// A text layer's words and style (053). Its picture is drawn from this, so it stays editable.
     var text: TextContent?
     /// A symbol layer's SF Symbol and color (054).
@@ -317,6 +319,7 @@ nonisolated enum Compositor {
         for layer in layers where layer.isVisible || !onlyVisible {
             ctx.saveGState()
             ctx.setAlpha(layer.opacity)
+            if let mode = layer.blendMode.flatMap(LayerBlend.init(rawValue:)) { ctx.setBlendMode(mode.cgMode) }
             if let hex = layer.fillHex, let color = cgColor(hex: hex) {
                 ctx.setFillColor(color)
                 ctx.fill(rect)

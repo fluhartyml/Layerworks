@@ -246,8 +246,7 @@ final class LayerworksUITests: XCTestCase {
 
         app.buttons["Text"].firstMatch.click()
         let field = app.textFields["Text"].firstMatch
-        field.click()
-        field.typeText("Hello\r")
+        type("Hello\r", into: field)
         XCTAssertTrue(app.buttons["Hello"].firstMatch.waitForExistence(timeout: 5), "Return makes a text layer named after its words")
         let bold = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Bold")).firstMatch
         XCTAssertTrue(bold.waitForExistence(timeout: 5), "Bold sits under the text box")
@@ -288,8 +287,7 @@ final class LayerworksUITests: XCTestCase {
         app.radioButtons["Layers"].firstMatch.click()
         app.buttons["Text"].firstMatch.click()
         let words = app.textFields["Text"].firstMatch
-        words.click()
-        words.typeText("Hi\r")
+        type("Hi\r", into: words)
         XCTAssertTrue(app.buttons["Hi"].firstMatch.waitForExistence(timeout: 5))
 
         app.buttons["Move"].firstMatch.click()
@@ -331,8 +329,7 @@ final class LayerworksUITests: XCTestCase {
         app.radioButtons["Layers"].firstMatch.click()
         app.buttons["Text"].firstMatch.click()
         let words = app.textFields["Text"].firstMatch
-        words.click()
-        words.typeText("Hi\r")
+        type("Hi\r", into: words)
         XCTAssertTrue(app.buttons["Hi"].firstMatch.waitForExistence(timeout: 5))
 
         app.buttons["Selection"].firstMatch.click()
@@ -366,10 +363,56 @@ final class LayerworksUITests: XCTestCase {
         canvas.click()
         XCTAssertTrue(app.buttons["Layer 1 (Lasso 1)"].firstMatch.waitForExistence(timeout: 5), "the first clear starts one layer")
         canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).click()
-        XCTAssertEqual(status.value as? String, "Cleared another area")
+        XCTAssertTrue(waitFor(status, "Cleared another area"), "a second clear on a different area")
         XCTAssertFalse(app.buttons["Layer 1 (Lasso 2)"].exists, "later clears land on the same layer")
         app.radioButtons["History"].firstMatch.click()
         XCTAssertEqual(any.matching(identifier: "History step Magic Lasso").count, 2, "each clear is its own History step")
+        #endif
+    }
+
+    /// Build step 4e1 (Blueprint 039 / 040 / 041): each Layer effect applies onto a new layer named
+    /// for it; Gradient fills an empty layer; Remove Background answers (Apple's subject lift).
+    @MainActor
+    func testLayerEffectsAndRemoveBackground() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
+        let status = app.descendants(matching: .any)["Status"].firstMatch
+        XCTAssertTrue(app.buttons["Text"].firstMatch.waitForExistence(timeout: 10))
+        app.radioButtons["Layers"].firstMatch.click()
+        app.buttons["Text"].firstMatch.click()
+        let words = app.textFields["Text"].firstMatch
+        type("Hi\r", into: words)
+        XCTAssertTrue(app.buttons["Hi"].firstMatch.waitForExistence(timeout: 5))
+
+        app.buttons["Layer"].firstMatch.click()
+        func choose(_ effect: String) {
+            app.popUpButtons["Effect"].firstMatch.click()
+            app.menuItems[effect].firstMatch.click()
+        }
+        choose("Translucent")
+        app.buttons["Apply"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Hi (Translucent 1)"].firstMatch.waitForExistence(timeout: 5))
+        choose("Glow")
+        app.buttons["Apply"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Hi (Glow 1)"].firstMatch.waitForExistence(timeout: 10))
+        choose("Blend")
+        app.buttons["Apply"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Hi (Blend 1)"].firstMatch.waitForExistence(timeout: 5))
+
+        app.buttons["Layer 1"].firstMatch.click()
+        choose("Gradient")
+        app.buttons["Apply"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Layer 1 (Gradient 1)"].firstMatch.waitForExistence(timeout: 5), "Gradient fills an empty layer")
+
+        app.buttons["Hi (Blend 1)"].firstMatch.click()
+        app.buttons["Remove Background"].firstMatch.click()   // the tool
+        app.buttons.matching(identifier: "Remove Background").element(boundBy: 1).click()   // the command in its panel
+        let said = status.value as? String ?? ""
+        XCTAssertTrue(said == "Background removed" || said == "No subject found in this layer" || said.hasPrefix("Kept"),
+                      "Remove Background gives an answer, got \(said)")
         #endif
     }
 }
@@ -388,4 +431,23 @@ private func showInspector(_ app: XCUIApplication) {
     let show = app.buttons["Show Inspector"].firstMatch
     if show.waitForExistence(timeout: 3) { show.click() }
     #endif
+}
+
+/// Clicks a text field and waits until it really has the keyboard before typing (the robot can
+/// otherwise type into nothing while the click is still landing).
+@MainActor
+private func type(_ text: String, into field: XCUIElement) {
+    field.click()
+    let deadline = Date().addingTimeInterval(3)
+    while Date() < deadline, (field.value(forKey: "hasKeyboardFocus") as? Bool) != true {
+        RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+    }
+    field.typeText(text)
+}
+
+/// Waits up to 10 s for an element's value (the status line) to read `text`.
+@MainActor
+private func waitFor(_ element: XCUIElement, _ text: String) -> Bool {
+    let done = NSPredicate(format: "value == %@", text)
+    return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: done, object: element)], timeout: 10) == .completed
 }

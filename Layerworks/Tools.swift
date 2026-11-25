@@ -15,7 +15,7 @@ import UniformTypeIdentifiers
 // Only finished tools are in the box (his rule: no placeholders) — each step-4 slice adds its own.
 
 enum Tool: String, CaseIterable, Identifiable {
-    case canvas, palette, move, selection, mask, bucket, pen, eraser, eyedropper, text, symbol, image, lasso
+    case canvas, palette, move, selection, mask, bucket, pen, eraser, eyedropper, text, symbol, image, layer, cutout, lasso
     var id: String { rawValue }
 
     var title: String {
@@ -26,6 +26,8 @@ enum Tool: String, CaseIterable, Identifiable {
         case .selection: "Selection"
         case .mask: "Mask"
         case .lasso: "Magic Lasso"
+        case .layer: "Layer"
+        case .cutout: "Remove Background"
         case .bucket: "Paint Bucket"
         case .pen: "Pen"
         case .eraser: "Eraser"
@@ -39,7 +41,7 @@ enum Tool: String, CaseIterable, Identifiable {
     /// Image Producer's own tool image, where it had one (copied byte for byte).
     var asset: String? {
         switch self {
-        case .selection, .mask, .lasso: nil
+        case .selection, .mask, .lasso, .layer, .cutout: nil
         case .canvas: "CanvasTool"
         case .palette: "PaletteTool"
         case .move: "MoveTool"
@@ -61,6 +63,8 @@ extension Tool {
         case .selection: "rectangle.dashed"
         case .mask: "theatermasks"
         case .lasso: "lasso.badge.sparkles"
+        case .layer: "square.3.layers.3d.middle.filled"
+        case .cutout: "person.and.background.dotted"
         default: "questionmark.square"
         }
     }
@@ -159,6 +163,8 @@ struct ToolInspector: View {
             case .selection: SelectionToolView(document: document, editor: editor)
             case .mask: MaskToolView(document: document, editor: editor)
             case .lasso: LassoToolView()
+            case .layer: LayerToolView(document: document, editor: editor)
+            case .cutout: Section { RemoveBackgroundView(document: document, editor: editor) } header: { Text("Remove Background") }
             case .bucket: BucketToolView(document: document, editor: editor)
             case .pen: PenToolView(document: document, editor: editor)
             case .eraser: EraserToolView(document: document, editor: editor)

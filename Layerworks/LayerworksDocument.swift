@@ -95,8 +95,18 @@ final class LayerworksDocument: ReferenceFileDocument {
         PackageLayout.referencedImages(manifest).reduce(0) { $0 + (blobs[$1]?.count ?? 0) }
     }
 
+    /// A live preview (039 effects): this layer is shown in place of the real one until Apply.
+    @Published var preview: (id: UUID, layer: Layer, png: Data?)? { didSet { render() } }
+
     func render() {
-        rendered = Compositor.image(layers: manifest.layers, blobs: blobs,
+        var layers = manifest.layers
+        var blobs = self.blobs
+        if let p = preview, let i = layers.firstIndex(where: { $0.id == p.id }) {
+            var l = p.layer
+            if let png = p.png { blobs["preview"] = png; l.image = "preview" }
+            layers[i] = l
+        }
+        rendered = Compositor.image(layers: layers, blobs: blobs,
                                     width: manifest.canvasWidth, height: manifest.canvasHeight,
                                     maxSide: 2048)
     }
