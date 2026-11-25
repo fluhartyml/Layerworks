@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 // REM: Build step 2 (Blueprint 028–035) — the editor window on Apple's standard pieces from day
 // one (028/008): the canvas is the document, and a standard .inspector holds the details.
@@ -53,13 +54,7 @@ struct ContentView: View {
             }
         }
         .inspector(isPresented: inspectorBinding) {
-            VStack(spacing: 0) {
-                ToolInspector(document: document, editor: editor)
-                    .frame(maxHeight: .infinity)
-                Divider()
-                LayersAndHistory(document: document, editor: editor)
-                    .frame(minHeight: 280)
-            }
+            InspectorColumn(document: document, editor: editor)
             .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
         }
         .toolbar {
@@ -76,6 +71,24 @@ struct ContentView: View {
         }
         .focusedSceneObject(editor)
         .focusedSceneObject(document)
+        .overlay { if editor.playing { LightboxPlayer(document: document, editor: editor) } }
+        #if os(macOS)
+        // 058: on the Mac, Apple's File ▸ Import from iPhone (Take Photo / Scan) drops into a new layer.
+        .importsItemProviders([.image]) { providers in
+            guard let p = providers.first else { return false }
+            _ = p.loadDataRepresentation(for: .image) { data, _ in
+                guard let data, let image = ContentRender.picture(data: data) else { return }
+                Task { @MainActor in
+                    if let id = document.addPicture(image, name: "Photo", above: editor.selectedLayer,
+                                                    replacing: false, undoManager: undoManager) {
+                        editor.selectedLayer = id
+                        editor.status = "Added a photo from iPhone"
+                    }
+                }
+            }
+            return true
+        }
+        #endif
         // Undo / History can remove the selected layer; something is always selected (036).
         .onChange(of: document.manifest.layers) { _, layers in
             if !layers.contains(where: { $0.id == editor.selectedLayer }) {
@@ -177,4 +190,32 @@ struct StatusLine: View {
 
 #Preview {
     ContentView(document: LayerworksDocument())
+}
+
+/// The inspector: tool settings over Layers / History.
+struct InspectorColumn: View {
+    @ObservedObject var document: LayerworksDocument
+    @ObservedObject var editor: EditorState
+
+    var body: some View {
+    // The tool's settings over Layers / History. On the Mac, Apple's split view lets the
+    // person drag the divider; the tool panel starts with most of the height so its
+    // settings are on screen.
+    #if os(macOS)
+    VSplitView {
+        ToolInspector(document: document, editor: editor)
+            .frame(minHeight: 200, idealHeight: 460)
+        LayersAndHistory(document: document, editor: editor)
+            .frame(minHeight: 180, idealHeight: 260)
+    }
+    #else
+    VStack(spacing: 0) {
+        ToolInspector(document: document, editor: editor)
+            .frame(maxHeight: .infinity)
+        Divider()
+        LayersAndHistory(document: document, editor: editor)
+            .frame(minHeight: 280)
+    }
+    #endif
+    }
 }

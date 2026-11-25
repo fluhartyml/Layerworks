@@ -26,6 +26,7 @@ struct CanvasView: View {
                 CanvasPicture(document: document)
                     .frame(width: pixelWidth * editor.zoom, height: pixelHeight * editor.zoom)
                     .accessibilityIdentifier("Canvas picture")
+                    .overlay { OnionSkin(document: document) }
                     .overlay { CanvasInteraction(document: document, editor: editor) }
                     .overlay { if editor.tool == .move { MoveOverlay(document: document, editor: editor) } }
                     .overlay { SelectMaskOverlay(document: document, editor: editor) }

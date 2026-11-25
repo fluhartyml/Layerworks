@@ -138,6 +138,8 @@ nonisolated struct ProjectManifest: Codable, Equatable, Sendable {
     var palette: [String] = Palette.starting
     /// The mask (048): what exports keep. nil = the whole canvas.
     var mask: MaskSpec?
+    /// The Lightbox's frames (058), oldest first.
+    var frames: [AnimFrame] = []
 
     init(canvasWidth: Int, canvasHeight: Int, ppi: Int = 300, layers: [Layer] = Layer.newPicture()) {
         self.canvasWidth = canvasWidth
@@ -163,6 +165,7 @@ nonisolated struct ProjectManifest: Codable, Equatable, Sendable {
         }
         palette = Palette.normalized(try c.decodeIfPresent([String].self, forKey: .palette) ?? Palette.starting)
         mask = try c.decodeIfPresent(MaskSpec.self, forKey: .mask)
+        frames = try c.decodeIfPresent([AnimFrame].self, forKey: .frames) ?? []
         historyCursor = min(max(try c.decodeIfPresent(Int.self, forKey: .historyCursor) ?? history.count - 1, 0),
                             history.count - 1)
     }
@@ -297,6 +300,7 @@ nonisolated enum PackageLayout {
 
     static func referencedImages(_ manifest: ProjectManifest) -> Set<String> {
         var keys = Set(manifest.layers.compactMap(\.image))
+        for f in manifest.frames { keys.insert(f.image); keys.formUnion(f.layers.compactMap(\.image)) }
         for step in manifest.history { keys.formUnion(step.layers.compactMap(\.image)) }
         return keys
     }

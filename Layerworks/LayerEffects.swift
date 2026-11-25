@@ -317,6 +317,7 @@ struct RemoveBackgroundView: View {
             ForEach(1...subjects, id: \.self) { i in
                 Toggle("Subject \(i)", isOn: Binding(get: { keep.contains(i) },
                                                     set: { if $0 { keep.insert(i) } else { keep.remove(i) } }))
+                    .accessibilityLabel("Subject \(i)")
             }
             Button("Keep Chosen Subjects") { run(keep: keep) }.disabled(keep.isEmpty)
         }

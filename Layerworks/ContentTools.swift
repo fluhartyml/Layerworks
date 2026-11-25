@@ -75,7 +75,7 @@ struct TextToolView: View {
             }
             .accessibilityLabel("Size")
             ColorChip(document: document, editor: editor)
-            Toggle("Outline", isOn: $outline)
+            Toggle("Outline", isOn: $outline).accessibilityLabel("Outline")
             if outline {
                 Stepper(value: $outlineWidth, in: 1...64) { Text("Outline \(Int(outlineWidth)) px").monospacedDigit() }
                 Text("The outline uses palette color 1 (\(document.manifest.palette[0])); the letters use the color in use.")

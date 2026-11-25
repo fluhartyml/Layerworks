@@ -463,6 +463,50 @@ final class LayerworksUITests: XCTestCase {
                       "the Image Playground panel shows")
         #endif
     }
+
+    /// Build step 4e2b (Blueprint 058): Capture makes a top layer; Animation mode captures frames;
+    /// Generate adds in-betweens; Play shows the Lightbox until Exit Preview.
+    @MainActor
+    func testCameraAndLightbox() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
+        let any = app.descendants(matching: .any)
+        let status = any["Status"].firstMatch
+        XCTAssertTrue(app.buttons["Text"].firstMatch.waitForExistence(timeout: 10))
+        app.radioButtons["Layers"].firstMatch.click()
+        app.buttons["Text"].firstMatch.click()
+        type("Hi\r", into: app.textFields["Text"].firstMatch)
+        XCTAssertTrue(app.buttons["Hi"].firstMatch.waitForExistence(timeout: 5))
+
+        app.buttons["Camera"].firstMatch.click()
+        // Animation mode is remembered between launches; start this test with it off.
+        let animation = app.switches["Animation mode"].firstMatch
+        XCTAssertTrue(animation.waitForExistence(timeout: 5))
+        if (animation.value as? Int) == 1 { animation.click() }
+        app.buttons["Capture"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Capture 1"].firstMatch.waitForExistence(timeout: 5), "Capture stamps a new top layer")
+        XCTAssertTrue((status.value as? String ?? "").hasPrefix("Captured and copied"))
+
+        animation.click()
+        app.buttons["Capture Frame"].firstMatch.click()
+        app.buttons["Hi"].firstMatch.click()
+        app.buttons["Move"].firstMatch.click()
+        app.buttons["Nudge Right"].firstMatch.click()
+        app.buttons["Camera"].firstMatch.click()      // leaving Move keeps the move
+        app.buttons["Capture Frame"].firstMatch.click()
+        XCTAssertTrue(waitFor(any["Frame count"].firstMatch, "2 frames"), "two frames captured")
+        app.buttons["Generate"].firstMatch.click()
+        XCTAssertTrue(waitFor(any["Frame count"].firstMatch, "5 frames"), "three in-betweens between two frames")
+
+        app.buttons["Play"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Exit Preview"].firstMatch.waitForExistence(timeout: 5), "the Lightbox plays")
+        app.buttons["Exit Preview"].firstMatch.click()
+        XCTAssertFalse(app.buttons["Exit Preview"].firstMatch.waitForExistence(timeout: 2))
+        #endif
+    }
 }
 
 /// A static text's words: macOS reports them as the value, iOS as the label.

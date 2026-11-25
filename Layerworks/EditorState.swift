@@ -40,6 +40,8 @@ final class EditorState: ObservableObject {
     var lassoLayer: UUID?
     /// The adjustment the Adjust panel shows (059); the Image and Filter menus set it.
     @Published var adjustment: Adjustment = .levels
+    /// The Lightbox is playing (058).
+    @Published var playing = false
 
     func optimize(_ document: LayerworksDocument, undoManager: UndoManager?) {
         let freed = document.optimizeHistory(undoManager: undoManager)

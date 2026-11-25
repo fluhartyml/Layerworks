@@ -31,6 +31,9 @@ struct LayerworksApp: App {
             HistoryCommands()
             AdjustCommands()
             #if os(macOS)
+            ImportFromDevicesCommands()
+            #endif
+            #if os(macOS)
             NewFromImportCommand()
             #endif
             InspectorCommands()
