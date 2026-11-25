@@ -44,12 +44,35 @@ nonisolated struct Layer: Identifiable, Codable, Equatable, Sendable {
     var frame: PixelRect?
     /// Pen (Pixels) square size for this layer, in canvas pixels (050: each layer has its own).
     var gridSize: Int?
+    /// A text layer's words and style (053). Its picture is drawn from this, so it stays editable.
+    var text: TextContent?
+    /// A symbol layer's SF Symbol and color (054).
+    var symbol: SymbolContent?
 
     static func newPicture() -> [Layer] {
         [Layer(name: "Light", role: .light),
          Layer(name: "Dark", role: .dark),
          Layer(name: "Layer 1", role: .content)]
     }
+}
+
+nonisolated struct TextContent: Codable, Equatable, Sendable {
+    var string: String
+    var fontName: String = "Helvetica"
+    /// In canvas pixels.
+    var size: Double = 96
+    var colorHex: String = "#000000"
+    var bold = false
+    var italic = false
+    var underline = false
+    /// Outline edge in a palette color (053); nil = none.
+    var outlineHex: String?
+    var outlineWidth: Double = 4
+}
+
+nonisolated struct SymbolContent: Codable, Equatable, Sendable {
+    var name: String
+    var colorHex: String
 }
 
 /// A rectangle in canvas pixels, top-left origin.

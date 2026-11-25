@@ -15,7 +15,7 @@ import UniformTypeIdentifiers
 // Only finished tools are in the box (his rule: no placeholders) — each step-4 slice adds its own.
 
 enum Tool: String, CaseIterable, Identifiable {
-    case canvas, palette, bucket, pen, eraser, eyedropper
+    case canvas, palette, bucket, pen, eraser, eyedropper, text, symbol, image
     var id: String { rawValue }
 
     var title: String {
@@ -26,6 +26,9 @@ enum Tool: String, CaseIterable, Identifiable {
         case .pen: "Pen"
         case .eraser: "Eraser"
         case .eyedropper: "Eyedropper"
+        case .text: "Text"
+        case .symbol: "Symbol"
+        case .image: "Image"
         }
     }
 
@@ -38,6 +41,9 @@ enum Tool: String, CaseIterable, Identifiable {
         case .pen: "PixelArtPenTool"
         case .eraser: "PinkEraser"
         case .eyedropper: "ColorSampleEyeDropper"
+        case .text: "FontBook"
+        case .symbol: "SFPickerTool"
+        case .image: "PhotoTool"
         }
     }
 }
@@ -127,6 +133,9 @@ struct ToolInspector: View {
             case .pen: PenToolView(document: document, editor: editor)
             case .eraser: EraserToolView(document: document, editor: editor)
             case .eyedropper: EyedropperToolView(document: document, editor: editor)
+            case .text: TextToolView(document: document, editor: editor)
+            case .symbol: SymbolToolView(document: document, editor: editor)
+            case .image: ImageToolView(document: document, editor: editor)
             }
             Section {
                 Text(BuildStamp.line).font(.footnote).foregroundStyle(.secondary)

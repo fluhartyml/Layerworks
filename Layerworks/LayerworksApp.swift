@@ -28,6 +28,9 @@ struct LayerworksApp: App {
             SaveCommands()
             #endif
             ZoomCommands()
+            #if os(macOS)
+            NewFromImportCommand()
+            #endif
             InspectorCommands()
         }
     }

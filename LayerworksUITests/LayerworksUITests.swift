@@ -222,6 +222,49 @@ final class LayerworksUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Layer 1 (Fill 1)"].firstMatch.waitForExistence(timeout: 2), "Undo removes the pour")
         #endif
     }
+
+    /// Build step 4c (Blueprint 053–055): a text line becomes a layer named after its words and
+    /// restyles live; a symbol layer is created and swapped in place; New from Import… is in File.
+    @MainActor
+    func testTextSymbolImage() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
+        let status = app.descendants(matching: .any)["Status"].firstMatch
+        XCTAssertTrue(app.buttons["Text"].firstMatch.waitForExistence(timeout: 10))
+        app.radioButtons["Layers"].firstMatch.click()
+
+        app.buttons["Text"].firstMatch.click()
+        let field = app.textFields["Text"].firstMatch
+        field.click()
+        field.typeText("Hello\r")
+        XCTAssertTrue(app.buttons["Hello"].firstMatch.waitForExistence(timeout: 5), "Return makes a text layer named after its words")
+        let bold = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Bold")).firstMatch
+        XCTAssertTrue(bold.waitForExistence(timeout: 5), "Bold sits under the text box")
+        bold.click()
+        XCTAssertEqual(status.value as? String, "Restyled “Hello”", "style changes apply live to the selected text")
+
+        app.buttons["Symbol"].firstMatch.click()
+        app.buttons["heart.fill"].firstMatch.click()
+        app.buttons["Create New Layer"].firstMatch.click()
+        XCTAssertTrue(app.buttons["heart.fill"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(status.value as? String, "Added heart.fill")
+        let search = app.textFields["Search symbols"].firstMatch
+        search.click()
+        search.typeText("star.fill")
+        app.buttons["star.fill"].firstMatch.click()
+        app.buttons["Apply to Selected Layer"].firstMatch.click()
+        XCTAssertEqual(status.value as? String, "Swapped to star.fill", "Apply swaps the symbol in place")
+
+        app.buttons["Image"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Import Image to New Layer…"].firstMatch.waitForExistence(timeout: 5))
+        app.menuBars.menuBarItems["File"].click()
+        XCTAssertTrue(app.menuItems["New from Import…"].exists, "File ▸ New from Import…")
+        app.typeKey(.escape, modifierFlags: [])
+        #endif
+    }
 }
 
 /// A static text's words: macOS reports them as the value, iOS as the label.

@@ -317,6 +317,12 @@ final class LayerworksDocument: ReferenceFileDocument {
     func rename(_ id: UUID, to name: String, undoManager: UndoManager?) {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
+        // 053: renaming a text layer changes its words — except emoji layers, which keep their
+        // glyph under a name like "Sunflower".
+        if var t = layer(id)?.text, !Self.isEmoji(t.string) {
+            t.string = name
+            updateText(id, t, undoManager: undoManager)
+        }
         commit("Rename Layer", undoManager: undoManager) { list in
             if let i = list.firstIndex(where: { $0.id == id }) { list[i].name = name }
         }
