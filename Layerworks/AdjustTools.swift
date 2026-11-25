@@ -247,8 +247,9 @@ struct PlaygroundToolView: View {
         Section {
             #if canImport(ImagePlayground)
             if supported {
-                Button("Image Playground: New Layer…") { filtering = false; showing = true }
-                Button("Filter Current Layer…") { filtering = true; showing = true }
+                // 074: bots and Voice Control use these exact names — never rename them silently.
+                Button("New Layer…") { filtering = false; showing = true }.accessibilityLabel("New Layer")
+                Button("Filter Current Layer…") { filtering = true; showing = true }.accessibilityLabel("Filter Current Layer")
                     .disabled(document.layer(editor.selectedLayer)?.image == nil)
                 Text("You type the words in Apple's Image Playground window. Done adds the picture as a new layer.")
                     .font(.callout).foregroundStyle(.secondary)

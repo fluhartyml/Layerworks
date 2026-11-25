@@ -151,7 +151,7 @@ final class LayerworksUITests: XCTestCase {
         app.typeKey("n", modifierFlags: .command)
         showInspector(app)
         let any = app.descendants(matching: .any)
-        XCTAssertTrue(app.buttons["Canvas"].firstMatch.waitForExistence(timeout: 10), "the tool box has Canvas")
+        XCTAssertTrue(app.buttons["Canvas Tool"].firstMatch.waitForExistence(timeout: 10), "the tool box has Canvas Tool")
         XCTAssertTrue(app.buttons["Palette"].firstMatch.exists, "the tool box has Palette")
         XCTAssertEqual(text(any["Current tool"].firstMatch), "Canvas", "every picture opens on the Canvas tool")
 
@@ -534,6 +534,40 @@ final class LayerworksUITests: XCTestCase {
             app.buttons["Export…"].firstMatch.click()
             // Under the robot (LW_ROBOT) the export skips the save panel and goes to the app's Robot Exports folder.
             XCTAssertTrue(waitFor(status, "Exported \(file)"), "\(format) exported, status: \(status.value ?? "")")
+        }
+        #endif
+    }
+
+    /// Build step 7a (Blueprint 074): the locked single-letter tool keys (Tools menu, no modifier),
+    /// typing in a text box is not stolen by them, and the names bots depend on.
+    @MainActor
+    func testToolLettersAndNames() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
+        let status = app.descendants(matching: .any)["Status"].firstMatch
+        XCTAssertTrue(app.buttons["Canvas Tool"].firstMatch.waitForExistence(timeout: 10), "074: the canvas tool is Canvas Tool")
+        XCTAssertTrue(app.menuBars.menuBarItems["Tools"].exists, "the Tools menu lists every tool")
+        app.descendants(matching: .any)["Canvas picture"].firstMatch.click()
+        for (key, name) in [("t", "Text"), ("b", "Paint Bucket"), ("w", "Magic Lasso"), ("h", "Camera"), ("c", "Canvas")] {
+            app.typeKey(key, modifierFlags: [])
+            XCTAssertTrue(waitFor(status, "\(name) tool"), "\(key.uppercased()) picks \(name), status: \(status.value ?? "")")
+        }
+
+        // Letters typed into a text box are words, not tool keys.
+        app.typeKey("t", modifierFlags: [])
+        type("hey\r", into: app.textFields["Text"].firstMatch)
+        XCTAssertTrue(waitFor(status, "Added text “hey”"), "typing e, h, y stays in the box, status: \(status.value ?? "")")
+
+        app.descendants(matching: .any)["Canvas picture"].firstMatch.click()   // leave the text box
+        app.typeKey("a", modifierFlags: [])
+        XCTAssertTrue(waitFor(status, "Image Playground tool"), "status: \(status.value ?? "")")
+        if app.buttons["New Layer"].firstMatch.waitForExistence(timeout: 3) {
+            XCTAssertTrue(app.buttons["Filter Current Layer"].firstMatch.exists, "074: bots use Filter Current Layer")
+        } else {
+            XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "value CONTAINS 'Image Playground'")).firstMatch.exists)
         }
         #endif
     }

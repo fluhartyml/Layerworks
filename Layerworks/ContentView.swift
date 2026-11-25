@@ -83,6 +83,21 @@ struct ContentView: View {
         }
         .focusedSceneObject(editor)
         .focusedSceneObject(document)
+        // 074: the single-letter tool keys. The Tools menu shows them (Apple's key equivalents),
+        // but SwiftUI on the Mac never delivered an UNMODIFIED menu key from the focused canvas
+        // (robot test, 2026 NOV 25), so the same letters are also taken here, with Apple's
+        // onKeyPress. While a text box is being edited (the Mac's field editor is first responder)
+        // the letters are typing and are left alone — the robot test proves it.
+        .onKeyPress(phases: .down) { press in
+            #if os(macOS)
+            if NSApp.keyWindow?.firstResponder is NSText { return .ignored }
+            #endif
+            guard press.modifiers.subtracting([.capsLock]).isEmpty, let c = press.characters.first,
+                  let tool = Tool.allCases.first(where: { $0.letter == Character(c.lowercased()) }) else { return .ignored }
+            editor.tool = tool
+            editor.status = "\(tool.title) tool"
+            return .handled
+        }
         .sheet(isPresented: $editor.exporting) { ExportSheet(document: document, editor: editor) }
         .sheet(isPresented: $editor.storyboarding) { StoryboardSheet(document: document, editor: editor) }
         .onChange(of: editor.printing) { _, now in

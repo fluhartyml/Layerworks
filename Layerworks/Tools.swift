@@ -60,6 +60,47 @@ enum Tool: String, CaseIterable, Identifiable {
     }
 }
 
+// REM: Blueprint 074 — the single-letter tool keys are LOCKED (his rulings 005/005a, 11-04:
+// "lock the letters in they look relatable to the command"). No modifier on purpose: he uses
+// Sticky Keys, and a switch user can send one key. They are ordinary menu key equivalents in
+// the Tools menu (Apple's way), not a custom key interceptor. Z was Image Producer's Zoom TOOL;
+// Layerworks zooms from the View menu and the zoom panel, so Z stays reserved, unassigned.
+extension Tool {
+    var letter: Character {
+        switch self {
+        case .canvas: "c"; case .palette: "k"; case .move: "m"; case .selection: "s"
+        case .mask: "q"; case .bucket: "b"; case .pen: "p"; case .eraser: "e"
+        case .eyedropper: "i"; case .text: "t"; case .symbol: "y"; case .image: "g"
+        case .playground: "a"; case .layer: "l"; case .cutout: "r"; case .lasso: "w"
+        case .adjust: "j"; case .camera: "h"
+        }
+    }
+
+    /// The name VoiceOver, Voice Control and bots use. REM 074: the canvas itself is "Canvas",
+    /// so its tool is "Canvas Tool" (Image Producer's name, which bots already depend on).
+    var accessibilityName: String { self == .canvas ? "Canvas Tool" : title }
+
+    /// Hover text: "Paint Bucket (B)".
+    var helpWithLetter: String { "\(title) (\(letter.uppercased()))" }
+}
+
+/// The Tools menu: every tool with its single letter.
+struct ToolCommands: Commands {
+    @FocusedObject private var editor: EditorState?
+    var body: some Commands {
+        CommandMenu("Tools") {
+            ForEach(Tool.allCases) { tool in
+                Button(tool.title) {
+                    editor?.tool = tool
+                    editor?.status = "\(tool.title) tool"
+                }
+                .keyboardShortcut(KeyEquivalent(tool.letter), modifiers: [])
+                .disabled(editor == nil)
+            }
+        }
+    }
+}
+
 extension Tool {
     /// Image Producer's SF Symbols for the tools that had no image of their own.
     var symbol: String {
@@ -141,8 +182,8 @@ struct ToolButton: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(tool.title)
-        .accessibilityLabel(tool.title)
+        .help(tool.helpWithLetter)
+        .accessibilityLabel(tool.accessibilityName)
         .accessibilityAddTraits(chosen ? .isSelected : [])
     }
 }

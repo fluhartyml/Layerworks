@@ -19,6 +19,9 @@ struct CanvasView: View {
     @Environment(\.undoManager) private var undoManager
     @State private var pinchBase: CGFloat?
     @State private var didFirstFit = false
+    #if os(macOS)
+    @FocusState private var canvasFocused: Bool
+    #endif
 
     var body: some View {
         GeometryReader { proxy in
@@ -36,6 +39,9 @@ struct CanvasView: View {
                     .contentShape(Rectangle())
                     #if os(macOS)
                     .simultaneousGesture(optionDoubleClicks)
+                    // 074: a click on the canvas leaves any text box, so the tool letters work
+                    // (a new window starts with the Width box active).
+                    .simultaneousGesture(TapGesture().onEnded { canvasFocused = true })
                     #endif
             }
             .scrollIndicators(.automatic)
@@ -43,7 +49,10 @@ struct CanvasView: View {
             #if os(macOS)
             // 047: with the Selection tool and the canvas focused, Edit ▸ Copy / Paste / Delete act
             // on the picture; text fields keep their own Copy and Paste.
-            .focusable(editor.tool == .selection)
+            // 074: always focusable, so the single-letter tool keys reach the editor.
+            .focusable()
+            .focused($canvasFocused)
+            .focusEffectDisabled()
             .onCopyCommand { editor.tool == .selection ? SelectionActions.providers(document, editor) : [] }
             .onPasteCommand(of: [.image, .png, .tiff]) { _ in
                 if editor.tool == .selection { SelectionActions.paste(document, editor, undoManager) }

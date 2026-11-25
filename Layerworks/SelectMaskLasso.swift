@@ -264,6 +264,7 @@ struct SelectMaskOverlay: View {
     @ObservedObject var document: LayerworksDocument
     @ObservedObject var editor: EditorState
     @Environment(\.undoManager) private var undoManager
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var maskStart: (PixelRect, Int?)?
 
     var body: some View {
@@ -288,7 +289,8 @@ struct SelectMaskOverlay: View {
                 }
             }
             if let s = editor.selection {
-                TimelineView(.animation(minimumInterval: 0.1)) { t in
+                // 074: Reduce Motion stops the ants marching (the dashed border stays).
+                TimelineView(.animation(minimumInterval: 0.1, paused: reduceMotion)) { t in
                     let phase = CGFloat(t.date.timeIntervalSinceReferenceDate * 20).truncatingRemainder(dividingBy: 12)
                     Path(CGRect(x: CGFloat(s.x) * z, y: CGFloat(s.y) * z, width: CGFloat(s.width) * z, height: CGFloat(s.height) * z))
                         .stroke(style: StrokeStyle(lineWidth: 1.5, dash: [6, 6], dashPhase: phase))
