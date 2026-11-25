@@ -586,6 +586,20 @@ final class LayerworksUITests: XCTestCase {
         #endif
     }
 
+    /// Build step 7c (Blueprint 076): the standard Help menu, backed by the Layerworks Help Book.
+    @MainActor
+    func testHelpMenu() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.menuBars.menuBarItems["Help"].click()
+        let item = app.menuBars.menuItems["Layerworks Help"].firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 5), "Help ▸ Layerworks Help")
+        XCTAssertTrue(item.isEnabled, "the Help Book is registered, so the item is enabled")
+        app.typeKey(.escape, modifierFlags: [])
+        #endif
+    }
+
     /// Build step 6b (Blueprint 066 / 067): File ▸ Storyboard… (⌥⌘B, not on the toolbar) orders the
     /// Camera frames, sets a transition and a soundtrack, plays, and Export writes a real video.
     @MainActor

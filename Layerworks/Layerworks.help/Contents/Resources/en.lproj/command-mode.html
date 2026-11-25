@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Command mode</title>
+<meta name="description" content="Run a job file from Terminal or a script, with no window.">
+<meta name="keywords" content="command mode, cli, terminal, script, bot, job, automation, json">
+<style>
+:root{color-scheme:light dark;--fg:#1d1d1f;--muted:#5f5f66;--bg:#fff;--line:#d2d2d7;--accent:#0060df}
+@media (prefers-color-scheme:dark){:root{--fg:#f5f5f7;--muted:#b0b0b8;--bg:#1e1e1e;--line:#3a3a3c;--accent:#4ea1ff}}
+body{font:18px/1.5 -apple-system,system-ui,sans-serif;color:var(--fg);background:var(--bg);margin:0;padding:24px 32px;max-width:760px}
+h1{font-size:28px;margin:0 0 12px}h2{font-size:21px;margin:28px 0 8px}
+a{color:var(--accent)}p,li{margin:6px 0}.muted{color:var(--muted)}
+kbd{font:inherit;border:1px solid var(--line);border-radius:5px;padding:0 5px}
+table{border-collapse:collapse;margin:8px 0}td,th{border-bottom:1px solid var(--line);padding:6px 12px 6px 0;text-align:left;vertical-align:top}
+nav{margin-top:32px;padding-top:12px;border-top:1px solid var(--line)}
+</style></head><body>
+<h1>Command mode</h1>
+<p>Scripts and bots can run Layerworks without a window:</p>
+<p><code>Layerworks.app/Contents/MacOS/Layerworks --command job.json</code><br><code>Layerworks.app/Contents/MacOS/Layerworks --help</code></p>
+<p>Every file a job reads or writes is a plain name inside the <b>job folder</b>. Choose that folder in <b>Layerworks ▸ Settings…</b>. Until you choose one, jobs use the app's own Command folder (<code>~/Library/Containers/com.nightgard.Layerworks/Data/Documents/Command</code>).</p>
+<h2>A job file</h2>
+<pre>{ "name": "Two cats", "width": 1024, "height": 1024,
+  "steps": [ { "do": "addImage", "file": "cat.png" },
+             { "do": "removeBackground" },
+             { "do": "exportPNG", "file": "out.png" },
+             { "do": "saveProject", "file": "out.layerworks" } ] }</pre>
+<p>Steps: <b>open</b>, <b>addImage</b>, <b>removeBackground</b>, <b>magicErase</b> (color, tolerance 0–100), <b>merge</b>, <b>resize</b> (width or height; keeps the shape), <b>crop</b>, <b>extend</b>, <b>scaleToFit</b>, <b>exportPNG</b>, <b>saveProject</b> and <b>imagePlayground</b>. Each step works on the top visible picture layer. A job's picture is Untitled in memory; only exportPNG and saveProject write files.</p>
+<p>Image Playground needs a person to press Done, so the imagePlayground step saves the project and stops. Open the project and finish it in the window.</p>
+<p>Layerworks prints one ok or FAIL line for each step and writes <i>name</i>.status.json. It exits with 0 when every step worked, 1 when a step failed (files from earlier steps are kept) and 2 for a usage error.</p>
+<nav><a href="index.html">Layerworks Help</a></nav>
+</body></html>

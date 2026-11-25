@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Layers, History and Undo</title>
+<meta name="description" content="Every change is a History step; Undo and Redo move through History.">
+<meta name="keywords" content="layers, history, undo, redo, merge, link, hide, rename, duplicate, purge, optimize">
+<style>
+:root{color-scheme:light dark;--fg:#1d1d1f;--muted:#5f5f66;--bg:#fff;--line:#d2d2d7;--accent:#0060df}
+@media (prefers-color-scheme:dark){:root{--fg:#f5f5f7;--muted:#b0b0b8;--bg:#1e1e1e;--line:#3a3a3c;--accent:#4ea1ff}}
+body{font:18px/1.5 -apple-system,system-ui,sans-serif;color:var(--fg);background:var(--bg);margin:0;padding:24px 32px;max-width:760px}
+h1{font-size:28px;margin:0 0 12px}h2{font-size:21px;margin:28px 0 8px}
+a{color:var(--accent)}p,li{margin:6px 0}.muted{color:var(--muted)}
+kbd{font:inherit;border:1px solid var(--line);border-radius:5px;padding:0 5px}
+table{border-collapse:collapse;margin:8px 0}td,th{border-bottom:1px solid var(--line);padding:6px 12px 6px 0;text-align:left;vertical-align:top}
+nav{margin-top:32px;padding-top:12px;border-top:1px solid var(--line)}
+</style></head><body>
+<h1>Layers, History and Undo</h1>
+<p>The inspector's <b>Layers</b> tab lists the layers, top first. Select a layer, then use a tool on it. Click the eye to hide or show a layer. <b>Add Layer</b> adds an empty one.</p>
+<p>Check two or more layers to <b>Merge</b> them into one, or <b>Link</b> them so they move and resize together. Right-click a layer to <b>Rename…</b>, <b>Duplicate</b>, <b>Unlink</b> or <b>Delete</b> it.</p>
+<h2>History is the undo</h2>
+<p>Every change becomes a step in the <b>History</b> tab. <b>Edit ▸ Undo</b> (<kbd>⌘Z</kbd>) and <b>Edit ▸ Redo</b> (<kbd>⇧⌘Z</kbd>) move back and forward through it. Click a step to look at the picture as it was then. Changing something while you look back drops the newer steps, the same as Undo followed by a new change.</p>
+<p>Right-click a step for <b>Restore from This Step</b> or <b>Delete This Step</b>. While you look at an earlier step, a <b>Keep This Step</b> button appears.</p>
+<h2>Keeping files small</h2>
+<p><b>Optimize History</b> frees space and keeps every step. <b>Purge History…</b> keeps the picture as it is now and clears the older steps; it asks first. Both are in the History tab and the File menu.</p>
+<nav><a href="index.html">Layerworks Help</a></nav>
+</body></html>

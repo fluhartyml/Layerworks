@@ -33,6 +33,10 @@
 			<true/>
 		</dict>
 	</array>
+	<key>CFBundleHelpBookFolder</key>
+	<string>Layerworks.help</string>
+	<key>CFBundleHelpBookName</key>
+	<string>me.fluharty.layerworks.help</string>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>UISupportsDocumentBrowser</key>
