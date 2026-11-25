@@ -28,7 +28,7 @@
 //  - Multiplatform: iOS/iPadOS + macOS 27.0 (SDKROOT auto, no Catalyst), device
 //    family 1,2,7. Sandbox on, user-selected files read/write. Swift 5, MainActor default.
 //  - Bundle id com.nightgard.Layerworks, team 3X3F6UJ44H.
-//  - Local git only; no GitHub repo until he says so.
+//  - GitHub: github.com/fluhartyml/Layerworks (private, created 2026-11-25 at his word).
 //  - Build number = git rev-list --count HEAD via Scripts/ hooks
 //    (run Scripts/install-hooks.sh once per clone).
 //
