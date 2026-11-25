@@ -24,16 +24,17 @@ struct CanvasView: View {
                 CanvasPicture(document: document)
                     .frame(width: pixelWidth * editor.zoom, height: pixelHeight * editor.zoom)
                     .accessibilityIdentifier("Canvas picture")
+                    .overlay { CanvasInteraction(document: document, editor: editor) }
                     .shadow(color: .black.opacity(0.25), radius: 2)
                     .padding(EditorState.margin)
                     .frame(minWidth: proxy.size.width, minHeight: proxy.size.height)
                     .contentShape(Rectangle())
                     #if os(macOS)
-                    .gesture(optionDoubleClicks)
+                    .simultaneousGesture(optionDoubleClicks)
                     #endif
             }
             .scrollIndicators(.automatic)
-            .gesture(pinch)
+            .simultaneousGesture(pinch)
             .background(Color.gray.opacity(0.15))
             .overlay { FloatingPreview(document: document) }
             .onAppear { update(viewport: proxy.size) }
@@ -159,7 +160,6 @@ struct FloatingPreview: View {
                     .shadow(radius: 4)
                     .padding(12)
                     .offset(drag)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: corner.alignment)
                     .gesture(
                         DragGesture()
                             .onChanged { drag = $0.translation }
@@ -176,6 +176,8 @@ struct FloatingPreview: View {
                             Button("Move to \(name(c))") { cornerRaw = c.rawValue }
                         }
                     }
+                    // The preview alone takes drags; the rest of the canvas stays free for tools.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: corner.alignment)
             }
         }
     }

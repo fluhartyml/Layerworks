@@ -247,6 +247,58 @@ final class LayerworksDocument: ReferenceFileDocument {
         undoManager?.setActionName("Palette")
     }
 
+    // MARK: Tool results (Blueprint 004: new layer, original hidden)
+
+    /// Puts a tool's result on a NEW layer above the edited one and hides the original, so
+    /// nothing is ever destroyed. The new layer is named in sequence: "Foreground (Pixel 2)".
+    /// REM: the Light / Dark floors stay visible under a result — they are the icon's backing
+    /// and an Icon Set export reads them by role; the result is ordinary content above them.
+    @discardableResult
+    func fork(_ id: UUID, into bitmap: Bitmap, label: String, title: String,
+              undoManager: UndoManager?) -> UUID? {
+        guard let i = layers.firstIndex(where: { $0.id == id }), let png = bitmap.png() else { return nil }
+        let original = layers[i]
+        let base = original.name.replacingOccurrences(of: #"\s*\([^()]*\)$"#, with: "",
+                                                      options: .regularExpression)
+        let used = Set(layers.map(\.name))
+        var n = 1
+        while used.contains("\(base) (\(label) \(n))") { n += 1 }
+        var result = Layer(name: "\(base) (\(label) \(n))", role: .content, image: store(png))
+        result.gridSize = original.gridSize
+        result.linkGroup = original.linkGroup
+        result.opacity = original.opacity
+        commit(title, undoManager: undoManager) { list in
+            if !original.role.isBackground { list[i].isVisible = false }
+            list.insert(result, at: i + 1)
+        }
+        return result.id
+    }
+
+    /// Fill Layer (049): a floor or an empty layer takes the color as its fill; a layer that
+    /// already holds a picture gets a filled copy above it, original hidden.
+    @discardableResult
+    func fillLayer(_ id: UUID, hex: String, undoManager: UndoManager?) -> UUID? {
+        guard let i = layers.firstIndex(where: { $0.id == id }) else { return nil }
+        if layers[i].image == nil {
+            commit("Fill Layer", undoManager: undoManager) { $0[i].fillHex = hex }
+            return id
+        }
+        var b = Bitmap(width: manifest.canvasWidth, height: manifest.canvasHeight)
+        if let c = RGBA(hex: hex) { b.fill([Bool](repeating: true, count: b.width * b.height), with: c) }
+        return fork(id, into: b, label: "Fill", title: "Fill Layer", undoManager: undoManager)
+    }
+
+    func setGridSize(_ id: UUID, _ size: Int, undoManager: UndoManager?) {
+        commit("Grid Size", undoManager: undoManager) { list in
+            if let i = list.firstIndex(where: { $0.id == id }) { list[i].gridSize = max(1, size) }
+        }
+    }
+
+    func bitmap(of id: UUID) -> Bitmap? {
+        layer(id).map { Bitmap(layer: $0, blobs: blobs, canvasWidth: manifest.canvasWidth,
+                               canvasHeight: manifest.canvasHeight) }
+    }
+
     // MARK: Layer edits (Blueprint 036)
 
     /// + adds a new, transparent layer above the selected one.

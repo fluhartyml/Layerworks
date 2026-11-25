@@ -42,6 +42,8 @@ nonisolated struct Layer: Identifiable, Codable, Equatable, Sendable {
     /// Where the picture sits, in canvas pixels from the top left. nil = the whole canvas.
     /// A canvas resize keeps each picture its own size, centered (never stretched).
     var frame: PixelRect?
+    /// Pen (Pixels) square size for this layer, in canvas pixels (050: each layer has its own).
+    var gridSize: Int?
 
     static func newPicture() -> [Layer] {
         [Layer(name: "Light", role: .light),

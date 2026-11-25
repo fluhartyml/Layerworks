@@ -171,6 +171,57 @@ final class LayerworksUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Remove"].firstMatch.isEnabled)
         #endif
     }
+
+    /// Build step 4b (Blueprint 049–052): Fill Layer, Pen squares, Eraser brush, Paint Bucket
+    /// pour and Eyedropper — each result lands on a new layer, original hidden.
+    @MainActor
+    func testDrawingTools() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
+        let any = app.descendants(matching: .any)
+        let status = any["Status"].firstMatch
+        let canvas = any["Canvas picture"].firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 10))
+        app.radioButtons["Layers"].firstMatch.click()
+
+        // Fill Layer on the Light floor takes the color as its fill (no new layer).
+        app.buttons["Light"].firstMatch.click()
+        app.buttons["Paint Bucket"].firstMatch.click()
+        app.buttons["Fill Layer"].firstMatch.click()
+        XCTAssertEqual(status.value as? String, "Filled the layer")
+
+        // Pen on Layer 1: one stroke = one new layer, "Layer 1 (Pixel 1)".
+        app.buttons["Layer 1"].firstMatch.click()
+        app.buttons["Pen"].firstMatch.click()
+        // REM: XCUITest drags do not reach SwiftUI's DragGesture on the Mac (clicks do), so the
+        // robot draws with clicks: one click = one square / one eraser dab, same code path.
+        canvas.click()
+        XCTAssertTrue(app.buttons["Layer 1 (Pixel 1)"].firstMatch.waitForExistence(timeout: 5), "a pen stroke forks a layer")
+        XCTAssertTrue(app.buttons["Show Layer 1"].firstMatch.exists, "the original is hidden")
+
+        // Eraser brush across the squares.
+        app.buttons["Eraser"].firstMatch.click()
+        canvas.click()
+        XCTAssertTrue(app.buttons["Layer 1 (Erase 1)"].firstMatch.waitForExistence(timeout: 5), "erasing forks a layer")
+
+        // Paint Bucket pour.
+        app.buttons["Paint Bucket"].firstMatch.click()
+        canvas.click()
+        XCTAssertTrue(app.buttons["Layer 1 (Fill 1)"].firstMatch.waitForExistence(timeout: 5), "a pour forks a layer")
+
+        // Eyedropper picks a color into the palette.
+        app.buttons["Eyedropper"].firstMatch.click()
+        canvas.click()
+        XCTAssertTrue((status.value as? String ?? "").hasPrefix("Picked #"), "the eyedropper picks a color")
+
+        // Every step is in History, and Undo takes the pour back.
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertFalse(app.buttons["Layer 1 (Fill 1)"].firstMatch.waitForExistence(timeout: 2), "Undo removes the pour")
+        #endif
+    }
 }
 
 /// A static text's words: macOS reports them as the value, iOS as the label.

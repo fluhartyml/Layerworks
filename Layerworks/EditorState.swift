@@ -28,6 +28,8 @@ final class EditorState: ObservableObject {
     @Published var tool: Tool = .canvas
     /// The palette swatch in use (044).
     @Published var colorIndex = 0
+    /// The Magic Eraser's color, picked from the picture (051 / 052).
+    @Published var magicColor: String?
     /// Size of the visible canvas area, kept current by the canvas view; Fit uses it.
     var viewport: CGSize = .zero
     /// Canvas size in pixels, kept current by the editor.
