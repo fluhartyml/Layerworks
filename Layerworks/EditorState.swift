@@ -20,6 +20,10 @@ final class EditorState: ObservableObject {
     @Published var focusMode = false
     /// Status line along the bottom reports every action (Blueprint 029).
     @Published var status = "Ready"
+    /// The selected layer (036: select the layer first, then use the tool).
+    @Published var selectedLayer: UUID?
+    /// Layers checked for Merge / Link — never the selection.
+    @Published var checked: Set<UUID> = []
     /// Size of the visible canvas area, kept current by the canvas view; Fit uses it.
     var viewport: CGSize = .zero
     /// Canvas size in pixels, kept current by the editor.

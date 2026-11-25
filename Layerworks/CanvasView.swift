@@ -81,16 +81,44 @@ struct CanvasView: View {
     #endif
 }
 
-/// The picture itself. Step 3 draws the layers here; today it is the white ground.
+/// The picture itself: the visible layers, bottom to top, over a checkerboard where it is
+/// clear (blank Light / Dark floors are clear until the paint bucket fills them).
 struct CanvasPicture: View {
     @ObservedObject var document: LayerworksDocument
 
     var body: some View {
-        Rectangle()
-            .fill(.white)
-            .accessibilityElement()
+        ZStack {
+            Checkerboard()
+            if let image = document.rendered {
+                Image(decorative: image, scale: 1)
+                    .resizable()
+                    .interpolation(.none)
+            }
+        }
+        .onAppear { if document.rendered == nil { document.render() } }
+        .accessibilityElement()
             .accessibilityLabel("Canvas")
             .accessibilityValue("\(document.manifest.canvasWidth) by \(document.manifest.canvasHeight) pixels")
+    }
+}
+
+/// The standard "this part is clear" pattern, drawn at a fixed screen size.
+struct Checkerboard: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let cell: CGFloat = 8
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(.white))
+            var y: CGFloat = 0, row = 0
+            while y < size.height {
+                var x: CGFloat = row.isMultiple(of: 2) ? 0 : cell
+                while x < size.width {
+                    ctx.fill(Path(CGRect(x: x, y: y, width: cell, height: cell)),
+                             with: .color(Color(white: 0.85)))
+                    x += cell * 2
+                }
+                y += cell; row += 1
+            }
+        }
     }
 }
 

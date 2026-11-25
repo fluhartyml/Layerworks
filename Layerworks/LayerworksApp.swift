@@ -20,6 +20,9 @@ struct LayerworksApp: App {
         DocumentGroup(newDocument: { LayerworksDocument() }) { file in
             ContentView(document: file.document)
         }
+        // REM: a usable first window on the MacBook Air (1440 × 932): room for the canvas and a
+        // Layers / History list you can work in. The user can resize; the system remembers it.
+        .defaultSize(width: 1200, height: 780)
         .commands {
             #if os(macOS)
             SaveCommands()

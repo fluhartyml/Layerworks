@@ -50,8 +50,13 @@ struct ContentView: View {
             }
         }
         .inspector(isPresented: inspectorBinding) {
-            CanvasInspector(document: document)
-                .inspectorColumnWidth(min: 220, ideal: 260, max: 360)
+            VStack(spacing: 0) {
+                CanvasInspector(document: document, editor: editor)
+                    .frame(maxHeight: 170)
+                Divider()
+                LayersAndHistory(document: document, editor: editor)
+            }
+            .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
         }
         .toolbar {
             ToolbarItem {
@@ -157,9 +162,14 @@ struct StatusLine: View {
 /// pieces are built (steps 3 and 4).
 struct CanvasInspector: View {
     @ObservedObject var document: LayerworksDocument
+    @ObservedObject var editor: EditorState
 
     var body: some View {
         Form {
+            Section("Selected Layer") {
+                Text(document.layer(editor.selectedLayer)?.name ?? "None")
+                    .accessibilityIdentifier("Selected layer")
+            }
             Section("Canvas") {
                 LabeledContent("Size",
                                value: "\(document.manifest.canvasWidth) × \(document.manifest.canvasHeight) pixels")

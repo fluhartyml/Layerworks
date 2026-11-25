@@ -75,4 +75,64 @@ final class LayerworksUITests: XCTestCase {
                       "the floating preview switch is in the Zoom panel")
         #endif
     }
+
+    /// Build step 3 (Blueprint 036 / 037 / 033): a new picture's layers, + Add Layer, the eye,
+    /// and ⌘Z / ⇧⌘Z stepping History through Apple's standard Edit ▸ Undo / Redo.
+    @MainActor
+    func testLayersAndHistoryUndo() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        let any = app.descendants(matching: .any)
+        let layersTab = app.radioButtons["Layers"].firstMatch
+        XCTAssertTrue(layersTab.waitForExistence(timeout: 10), "the right column has a Layers tab")
+        layersTab.click()
+
+        for name in ["Light", "Dark", "Layer 1"] {
+            XCTAssertTrue(app.buttons[name].firstMatch.exists, "a new picture starts with \(name)")
+        }
+        XCTAssertEqual(text(any["Selected layer"].firstMatch), "Layer 1", "the content layer starts selected")
+
+        app.buttons["Add Layer"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Layer 2"].firstMatch.waitForExistence(timeout: 5), "+ adds Layer 2")
+        XCTAssertEqual(text(any["Selected layer"].firstMatch), "Layer 2", "the new layer is selected")
+        app.buttons["Dark"].firstMatch.click()
+        XCTAssertEqual(text(any["Selected layer"].firstMatch), "Dark", "clicking a name selects that layer")
+        app.buttons["Layer 2"].firstMatch.click()
+
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertFalse(app.buttons["Layer 2"].firstMatch.waitForExistence(timeout: 2), "⌘Z steps History back")
+        app.typeKey("z", modifierFlags: [.command, .shift])
+        XCTAssertTrue(app.buttons["Layer 2"].firstMatch.waitForExistence(timeout: 5), "⇧⌘Z steps forward")
+
+        app.buttons["Hide Layer 1"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Show Layer 1"].firstMatch.waitForExistence(timeout: 5), "the eye hides a layer")
+
+        app.menuBars.menuBarItems["Edit"].click()
+        let undo = app.menuBars.menuBarItems["Edit"].menuItems["Undo"]
+        XCTAssertTrue(undo.exists && undo.isEnabled, "Apple's standard Edit ▸ Undo is back, bound to History")
+        app.typeKey(.escape, modifierFlags: [])
+
+        app.radioButtons["History"].firstMatch.click()
+        for step in ["Original", "Add Layer", "Hide Layer"] {
+            XCTAssertTrue(app.descendants(matching: .any)["History step \(step)"].firstMatch.waitForExistence(timeout: 5),
+                          "History lists \(step)")
+        }
+        app.descendants(matching: .any)["History step Original"].firstMatch.click()
+        XCTAssertEqual(app.descendants(matching: .any)["Status"].firstMatch.value as? String, "Looking at “Original”", "clicking a step looks at it; row hittable=\(app.descendants(matching: .any)["History step Original"].firstMatch.isHittable) frame=\(app.descendants(matching: .any)["History step Original"].firstMatch.frame) type=\(app.descendants(matching: .any)["History step Original"].firstMatch.elementType.rawValue) window=\(app.windows.firstMatch.frame)")
+        app.radioButtons["Layers"].firstMatch.click()
+        XCTAssertFalse(app.buttons["Layer 2"].firstMatch.waitForExistence(timeout: 2),
+                       "looking at the Original shows its layers")
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(app.buttons["Layer 2"].firstMatch.waitForExistence(timeout: 5),
+                      "⌘Z after a look goes back to where you were")
+        #endif
+    }
+}
+
+/// A static text's words: macOS reports them as the value, iOS as the label.
+private func text(_ element: XCUIElement) -> String {
+    let value = element.value as? String ?? ""
+    return value.isEmpty ? element.label : value
 }
