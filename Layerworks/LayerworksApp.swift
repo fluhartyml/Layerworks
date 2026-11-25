@@ -29,6 +29,7 @@ struct LayerworksApp: App {
             #endif
             ZoomCommands()
             HistoryCommands()
+            AdjustCommands()
             #if os(macOS)
             NewFromImportCommand()
             #endif

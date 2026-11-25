@@ -38,6 +38,8 @@ final class EditorState: ObservableObject {
     @Published var selection: PixelRect?
     /// The layer this run of Magic Lasso clears is collecting on (056).
     var lassoLayer: UUID?
+    /// The adjustment the Adjust panel shows (059); the Image and Filter menus set it.
+    @Published var adjustment: Adjustment = .levels
 
     func optimize(_ document: LayerworksDocument, undoManager: UndoManager?) {
         let freed = document.optimizeHistory(undoManager: undoManager)

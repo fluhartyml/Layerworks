@@ -10,6 +10,7 @@ import CoreGraphics
 import CoreText
 import ImageIO
 import UniformTypeIdentifiers
+import SceneKit
 #if canImport(AppKit)
 import AppKit
 #else
@@ -23,6 +24,7 @@ import UIKit
 nonisolated enum ContentRender {
     /// Draws text with Core Text. Returns the picture, trimmed to the words plus a margin.
     static func text(_ t: TextContent) -> CGImage? {
+        if let depth = t.depth, depth > 0, let solid = text3D(t, depth: depth) { return solid }
         var font = CTFontCreateWithName(t.fontName as CFString, CGFloat(t.size), nil)
         var traits: CTFontSymbolicTraits = []
         if t.bold { traits.insert(.traitBold) }
@@ -55,6 +57,54 @@ nonisolated enum ContentRender {
         }
         CTLineDraw(fill, ctx)
         return ctx.makeImage()
+    }
+
+    /// 3D text (053): SceneKit extrudes the font into a solid and an offscreen renderer draws it,
+    /// lit, at the chosen turn and tilt. The words stay live text; 3D off gives the flat letters back.
+    static func text3D(_ t: TextContent, depth: Double) -> CGImage? {
+        let solid = SCNText(string: t.string, extrusionDepth: CGFloat(depth))
+        #if canImport(AppKit)
+        solid.font = NSFont(name: t.fontName, size: CGFloat(t.size)) ?? NSFont.systemFont(ofSize: CGFloat(t.size))
+        let color = NSColor(cgColor: Compositor.cgColor(hex: t.colorHex) ?? CGColor(gray: 0, alpha: 1)) ?? .black
+        #else
+        solid.font = UIFont(name: t.fontName, size: CGFloat(t.size)) ?? UIFont.systemFont(ofSize: CGFloat(t.size))
+        let color = UIColor(cgColor: Compositor.cgColor(hex: t.colorHex) ?? CGColor(gray: 0, alpha: 1))
+        #endif
+        solid.flatness = 0.2
+        solid.chamferRadius = CGFloat(min(depth / 6, 6))
+        solid.firstMaterial?.diffuse.contents = color
+        solid.firstMaterial?.lightingModel = .physicallyBased
+        let node = SCNNode(geometry: solid)
+        let (lo, hi) = node.boundingBox
+        node.pivot = SCNMatrix4MakeTranslation((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, (lo.z + hi.z) / 2)
+        node.eulerAngles = SCNVector3(Float(t.tilt * .pi / 180), Float(t.turn * .pi / 180), 0)
+        let scene = SCNScene()
+        scene.rootNode.addChildNode(node)
+        let w = CGFloat(hi.x - lo.x), h = CGFloat(hi.y - lo.y)
+        let camera = SCNCamera()
+        camera.usesOrthographicProjection = true
+        camera.orthographicScale = Double(max(w, h) * 0.75)
+        let cameraNode = SCNNode()
+        cameraNode.camera = camera
+        cameraNode.position = SCNVector3(0, 0, Float(max(w, h) * 3))
+        scene.rootNode.addChildNode(cameraNode)
+        let light = SCNNode(); light.light = SCNLight(); light.light?.type = .directional
+        light.eulerAngles = SCNVector3(-0.6, 0.5, 0)
+        scene.rootNode.addChildNode(light)
+        let ambient = SCNNode(); ambient.light = SCNLight(); ambient.light?.type = .ambient
+        ambient.light?.intensity = 400
+        scene.rootNode.addChildNode(ambient)
+        let renderer = SCNRenderer(device: nil, options: nil)
+        renderer.scene = scene
+        renderer.pointOfView = cameraNode
+        let side = max(w, h) * 1.5
+        let snap = renderer.snapshot(atTime: 0, with: CGSize(width: side, height: side), antialiasingMode: .multisampling4X)
+        #if canImport(AppKit)
+        var r = CGRect(origin: .zero, size: snap.size)
+        return snap.cgImage(forProposedRect: &r, context: nil, hints: nil)
+        #else
+        return snap.cgImage
+        #endif
     }
 
     /// An SF Symbol drawn in one color at `points` tall.

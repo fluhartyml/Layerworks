@@ -415,6 +415,54 @@ final class LayerworksUITests: XCTestCase {
                       "Remove Background gives an answer, got \(said)")
         #endif
     }
+
+    /// Build step 4e2a (Blueprint 059 / 053 3D): Adjust panel (Blur, Levels from the Image menu,
+    /// Flip), Liquify from the Filter menu by a click; 3D text restyles live; Image Playground panel.
+    @MainActor
+    func testAdjustmentsAnd3DText() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
+        let any = app.descendants(matching: .any)
+        let status = any["Status"].firstMatch
+        XCTAssertTrue(app.buttons["Text"].firstMatch.waitForExistence(timeout: 10))
+        app.radioButtons["Layers"].firstMatch.click()
+        app.buttons["Text"].firstMatch.click()
+        type("Hi\r", into: app.textFields["Text"].firstMatch)
+        XCTAssertTrue(app.buttons["Hi"].firstMatch.waitForExistence(timeout: 5))
+        any.matching(NSPredicate(format: "label == %@", "3D")).firstMatch.click()
+        XCTAssertTrue(waitFor(status, "Restyled “Hi”"), "3D restyles the text live")
+
+        app.buttons["Adjust"].firstMatch.click()
+        app.popUpButtons["Adjustment"].firstMatch.click()
+        app.menuItems["Gaussian Blur"].firstMatch.click()
+        app.buttons["Apply"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Hi (Gaussian Blur 1)"].firstMatch.waitForExistence(timeout: 10))
+
+        app.menuBars.menuBarItems["Image"].click()
+        app.menuItems["Adjustments"].click()
+        app.menuItems["Levels…"].click()
+        app.buttons["Apply"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Hi (Levels 1)"].firstMatch.waitForExistence(timeout: 10), "Image ▸ Adjustments ▸ Levels…")
+
+        app.popUpButtons["Adjustment"].firstMatch.click()
+        app.menuItems["Flip"].firstMatch.click()
+        app.buttons["Flip Horizontal"].firstMatch.click()
+        app.buttons["Apply"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Hi (Flip 1)"].firstMatch.waitForExistence(timeout: 10))
+
+        app.menuBars.menuBarItems["Filter"].click()
+        app.menuItems["Liquify…"].click()
+        any["Canvas picture"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Hi (Liquify 1)"].firstMatch.waitForExistence(timeout: 10), "Liquify bends where you click")
+
+        app.buttons["Image Playground"].firstMatch.click()
+        XCTAssertTrue(any.matching(NSPredicate(format: "label BEGINSWITH %@ OR value BEGINSWITH %@", "Image Playground", "Image Playground")).count > 1,
+                      "the Image Playground panel shows")
+        #endif
+    }
 }
 
 /// A static text's words: macOS reports them as the value, iOS as the label.

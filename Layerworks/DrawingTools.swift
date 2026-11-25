@@ -210,6 +210,9 @@ struct CanvasInteraction: View {
     @AppStorage("lw.eraser.tolerance") private var magicTolerance = 0.1
     @AppStorage("lw.eyedropper.sample") private var sample = 1
     @AppStorage("lw.lasso.tolerance") private var lassoTolerance = 0.1
+    @AppStorage("lw.adj.liquify") private var liquifyMode = LiquifyMode.bulge
+    @AppStorage("lw.adj.lqRadius") private var liquifyRadius = 120.0
+    @AppStorage("lw.adj.lqStrength") private var liquifyStrength = 0.5
 
     @State private var points: [CGPoint] = []
     @State private var strokeErases = false
@@ -230,7 +233,7 @@ struct CanvasInteraction: View {
                 .onContinuousHover { phase in hover(phase) }
                 #endif
         }
-        .allowsHitTesting(editor.tool.usesCanvas)
+        .allowsHitTesting(editor.tool.usesCanvas || (editor.tool == .adjust && editor.adjustment == .liquify))
         .onChange(of: editor.tool) { _, _ in preview = nil; editor.lassoLayer = nil; refreshMagicPreview() }
         .onChange(of: editor.magicColor) { _, _ in refreshMagicPreview() }
         .onChange(of: magicTolerance) { _, _ in refreshMagicPreview() }
@@ -310,6 +313,19 @@ struct CanvasInteraction: View {
             select(document.fork(id, into: b, label: "Erase", title: "Eraser", undoManager: undoManager), "Erased")
         case .eyedropper:
             pickColor(x, y)
+        case .adjust where editor.adjustment == .liquify:
+            // 059 Liquify: each touch bends the picture there, its own History step, all on one
+            // new layer (original hidden) — the same run rule as the Magic Lasso.
+            guard let b = document.bitmap(of: id), b.contains(x, y),
+                  let out = Adjust.liquify(b, at: CGPoint(x: x, y: y), mode: liquifyMode,
+                                           radius: liquifyRadius, strength: liquifyStrength) else { return }
+            if editor.lassoLayer == id {
+                document.replacePicture(id, with: out, title: "Liquify", undoManager: undoManager)
+                editor.status = "Liquified again"
+            } else if let new = document.fork(id, into: out, label: "Liquify", title: "Liquify", undoManager: undoManager) {
+                editor.lassoLayer = new
+                select(new, "Liquified")
+            }
         case .lasso:
             // 056: the first clear starts one new layer (original hidden); later clears in the
             // same run land on it, each its own History step.

@@ -32,6 +32,10 @@ struct TextToolView: View {
     @AppStorage("lw.text.underline") private var underline = false
     @AppStorage("lw.text.outline") private var outline = false
     @AppStorage("lw.text.outlineWidth") private var outlineWidth = 4.0
+    @AppStorage("lw.text.threeD") private var threeD = false
+    @AppStorage("lw.text.depth") private var depth = 40.0
+    @AppStorage("lw.text.turn") private var turn = 25.0
+    @AppStorage("lw.text.tilt") private var tilt = -15.0
     @State private var words = ""
     @State private var choosingFont = false
 
@@ -48,6 +52,7 @@ struct TextToolView: View {
                 Toggle(isOn: $bold) { Label("Bold", systemImage: "bold") }
                 Toggle(isOn: $italic) { Label("Italic", systemImage: "italic") }
                 Toggle(isOn: $underline) { Label("Underline", systemImage: "underline") }
+                Toggle(isOn: $threeD) { Label("3D", systemImage: "cube") }
             }
             .toggleStyle(.button)
             .labelStyle(.iconOnly)
@@ -76,11 +81,17 @@ struct TextToolView: View {
                 Text("The outline uses palette color 1 (\(document.manifest.palette[0])); the letters use the color in use.")
                     .font(.callout).foregroundStyle(.secondary)
             }
+            if threeD {
+                Stepper(value: $depth, in: 2...400, step: 4) { Text("Depth \(Int(depth)) px").monospacedDigit() }
+                HStack { Text("Turn"); Slider(value: $turn, in: -80...80).accessibilityLabel("Turn"); Text("\(Int(turn))°").monospacedDigit().frame(width: 44) }
+                HStack { Text("Tilt"); Slider(value: $tilt, in: -80...80).accessibilityLabel("Tilt"); Text("\(Int(tilt))°").monospacedDigit().frame(width: 44) }
+            }
             if textLayer != nil {
                 Button("Apply Style to Selected Text") { restyle() }
             }
         } header: { Text("Style") }
-        .onChange(of: [bold, italic, underline, outline]) { _, _ in restyle() }
+        .onChange(of: [bold, italic, underline, outline, threeD]) { _, _ in restyle() }
+        .onChange(of: [depth, turn, tilt]) { _, _ in restyle() }
         .onChange(of: size) { _, _ in restyle() }
         .onChange(of: outlineWidth) { _, _ in restyle() }
         .onChange(of: fontName) { _, _ in restyle() }
@@ -94,7 +105,8 @@ struct TextToolView: View {
     private func style(_ s: String) -> TextContent {
         TextContent(string: s, fontName: fontName, size: size, colorHex: editor.color(in: document),
                     bold: bold, italic: italic, underline: underline,
-                    outlineHex: outline ? document.manifest.palette[0] : nil, outlineWidth: outlineWidth)
+                    outlineHex: outline ? document.manifest.palette[0] : nil, outlineWidth: outlineWidth,
+                    depth: threeD ? depth : nil, turn: turn, tilt: tilt)
     }
 
     private func addLine() {

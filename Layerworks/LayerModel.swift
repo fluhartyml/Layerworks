@@ -72,6 +72,11 @@ nonisolated struct TextContent: Codable, Equatable, Sendable {
     /// Outline edge in a palette color (053); nil = none.
     var outlineHex: String?
     var outlineWidth: Double = 4
+    /// 3D / extruded letters (053; Image Producer's Text3D): depth in pixels; nil = flat.
+    var depth: Double?
+    /// Turn (left/right) and tilt (up/down) of the 3D letters, in degrees.
+    var turn: Double = 25
+    var tilt: Double = -15
 }
 
 nonisolated struct SymbolContent: Codable, Equatable, Sendable {
