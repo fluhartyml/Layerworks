@@ -39,12 +39,42 @@ nonisolated struct Layer: Identifiable, Codable, Equatable, Sendable {
     var fillHex: String?
     /// Content hash of this layer's picture in the package's Images folder. nil = empty.
     var image: String?
+    /// Where the picture sits, in canvas pixels from the top left. nil = the whole canvas.
+    /// A canvas resize keeps each picture its own size, centered (never stretched).
+    var frame: PixelRect?
 
     static func newPicture() -> [Layer] {
         [Layer(name: "Light", role: .light),
          Layer(name: "Dark", role: .dark),
          Layer(name: "Layer 1", role: .content)]
     }
+}
+
+/// A rectangle in canvas pixels, top-left origin.
+nonisolated struct PixelRect: Codable, Equatable, Sendable {
+    var x: Int, y: Int, width: Int, height: Int
+}
+
+/// The eight starting colors (044) — Image Producer's crayon box, so palettes match.
+nonisolated enum Palette {
+    static let starting = ["#000000", "#FFFFFF", "#FF3B30", "#FF9500",
+                           "#FFCC00", "#34C759", "#007AFF", "#AF52DE"]
+    static let minimum = 8
+    static let maximum = 24
+
+    /// Keeps valid #RRGGBB colors, pads to 8 with the starting set, caps at 24.
+    static func normalized(_ colors: [String]) -> [String] {
+        var out = colors.map { $0.uppercased() }.filter { Compositor.cgColor(hex: $0) != nil && $0.count == 7 }
+        if out.count < minimum { out += starting.dropFirst(out.count).prefix(minimum - out.count) }
+        return Array(out.prefix(maximum))
+    }
+}
+
+/// A `.iconpalette` file — Image Producer's format, so palettes move between both apps.
+nonisolated struct PaletteFile: Codable, Sendable {
+    var schemaVersion = 1
+    var name: String
+    var colors: [String]
 }
 
 /// One step of History (037): a full, restorable layer stack. Pictures are shared by hash,
@@ -70,6 +100,8 @@ nonisolated struct ProjectManifest: Codable, Equatable, Sendable {
     var history: [HistoryStep] = []
     /// The step the picture is showing. Always the last step unless the user is looking back.
     var historyCursor: Int = 0
+    /// The document palette (044): every color in the app comes from it.
+    var palette: [String] = Palette.starting
 
     init(canvasWidth: Int, canvasHeight: Int, ppi: Int = 300, layers: [Layer] = Layer.newPicture()) {
         self.canvasWidth = canvasWidth
@@ -93,6 +125,7 @@ nonisolated struct ProjectManifest: Codable, Equatable, Sendable {
             history = [HistoryStep(title: "Original", layers: layers,
                                    canvasWidth: canvasWidth, canvasHeight: canvasHeight)]
         }
+        palette = Palette.normalized(try c.decodeIfPresent([String].self, forKey: .palette) ?? Palette.starting)
         historyCursor = min(max(try c.decodeIfPresent(Int.self, forKey: .historyCursor) ?? history.count - 1, 0),
                             history.count - 1)
     }
@@ -111,6 +144,7 @@ nonisolated enum ImageProducerImport {
         var canvasHeight: Int?
         var ppi: Double?
         var layers: [OldLayer]?
+        var palette: [String]?
     }
 
     struct OldLayer: Decodable {
@@ -149,9 +183,11 @@ nonisolated enum ImageProducerImport {
                   isVisible: o.isVisible ?? true, opacity: o.opacity ?? 1,
                   linkGroup: o.linkGroup, fillHex: o.role.fillHex, image: nil)
         }
-        return ProjectManifest(canvasWidth: width, canvasHeight: height,
-                               ppi: Int((old.ppi ?? 72).rounded()),
-                               layers: layers.isEmpty ? Layer.newPicture() : layers)
+        var manifest = ProjectManifest(canvasWidth: width, canvasHeight: height,
+                                       ppi: Int((old.ppi ?? 72).rounded()),
+                                       layers: layers.isEmpty ? Layer.newPicture() : layers)
+        manifest.palette = Palette.normalized(old.palette ?? Palette.starting)
+        return manifest
     }
 }
 
@@ -256,7 +292,7 @@ nonisolated enum Compositor {
                 ctx.fill(rect)
             }
             if let key = layer.image, let data = blobs[key], let picture = decode(data) {
-                ctx.draw(picture, in: rect)
+                ctx.draw(picture, in: drawRect(layer.frame, canvasWidth: width, canvasHeight: height, into: rect))
             }
             ctx.restoreGState()
         }
@@ -268,6 +304,14 @@ nonisolated enum Compositor {
         guard let image = image(layers: layers, blobs: blobs, width: width, height: height,
                                 maxSide: maxSide, onlyVisible: onlyVisible) else { return nil }
         return pngData(image)
+    }
+
+    /// A layer frame (canvas pixels, top-left origin) in a context of `rect` (bottom-left origin).
+    static func drawRect(_ frame: PixelRect?, canvasWidth: Int, canvasHeight: Int, into rect: CGRect) -> CGRect {
+        guard let f = frame else { return rect }
+        let sx = rect.width / CGFloat(max(canvasWidth, 1)), sy = rect.height / CGFloat(max(canvasHeight, 1))
+        return CGRect(x: CGFloat(f.x) * sx, y: rect.height - CGFloat(f.y + f.height) * sy,
+                      width: CGFloat(f.width) * sx, height: CGFloat(f.height) * sy)
     }
 
     static func pngData(_ image: CGImage) -> Data? {

@@ -201,6 +201,52 @@ final class LayerworksDocument: ReferenceFileDocument {
         undoManager?.removeAllActions()
     }
 
+    // MARK: Canvas and palette (Blueprint 043 / 044)
+
+    /// A new canvas size is a History step (the step keeps its size, so Undo puts it back).
+    /// Every picture keeps its own pixel size and stays centered: nothing is stretched.
+    func resizeCanvas(width: Int, height: Int, undoManager: UndoManager?) {
+        let width = min(max(width, 1), 16_384), height = min(max(height, 1), 16_384)
+        guard width != manifest.canvasWidth || height != manifest.canvasHeight else { return }
+        let oldW = manifest.canvasWidth, oldH = manifest.canvasHeight
+        let dx = (width - oldW) / 2, dy = (height - oldH) / 2
+        var next = manifest.layers
+        for i in next.indices where next[i].image != nil {
+            let f = next[i].frame ?? PixelRect(x: 0, y: 0, width: oldW, height: oldH)
+            next[i].frame = PixelRect(x: f.x + dx, y: f.y + dy, width: f.width, height: f.height)
+        }
+        let old = manifest.historyCursor
+        var m = manifest
+        m.history.removeSubrange((old + 1)...)
+        m.canvasWidth = width
+        m.canvasHeight = height
+        m.history.append(HistoryStep(title: "Canvas Size", layers: next, canvasWidth: width, canvasHeight: height))
+        m.historyCursor = m.history.count - 1
+        m.layers = next
+        manifest = m
+        registerMove(back: old, title: "Canvas Size", undoManager: undoManager)
+    }
+
+    /// Resolution and the palette are document settings, not pictures, so they are not History
+    /// steps; Undo still takes them back (one plain inverse, never a store snapshot).
+    func setPPI(_ ppi: Int, undoManager: UndoManager?) {
+        let ppi = min(max(ppi, 36), 2400)
+        let old = manifest.ppi
+        guard ppi != old else { return }
+        manifest.ppi = ppi
+        undoManager?.registerUndo(withTarget: self) { $0.setPPI(old, undoManager: undoManager) }
+        undoManager?.setActionName("Resolution")
+    }
+
+    func setPalette(_ colors: [String], undoManager: UndoManager?) {
+        let colors = Palette.normalized(colors)
+        let old = manifest.palette
+        guard colors != old else { return }
+        manifest.palette = colors
+        undoManager?.registerUndo(withTarget: self) { $0.setPalette(old, undoManager: undoManager) }
+        undoManager?.setActionName("Palette")
+    }
+
     // MARK: Layer edits (Blueprint 036)
 
     /// + adds a new, transparent layer above the selected one.

@@ -23,6 +23,7 @@ struct CanvasView: View {
             ScrollView([.horizontal, .vertical]) {
                 CanvasPicture(document: document)
                     .frame(width: pixelWidth * editor.zoom, height: pixelHeight * editor.zoom)
+                    .accessibilityIdentifier("Canvas picture")
                     .shadow(color: .black.opacity(0.25), radius: 2)
                     .padding(EditorState.margin)
                     .frame(minWidth: proxy.size.width, minHeight: proxy.size.height)

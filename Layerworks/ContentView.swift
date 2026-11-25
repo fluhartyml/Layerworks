@@ -44,6 +44,8 @@ struct ContentView: View {
                 }
             if !editor.focusMode {
                 Divider()
+                ToolBox(editor: editor)
+                Divider()
                 ZoomPanel(editor: editor)
                 Divider()
                 StatusLine(editor: editor)
@@ -51,10 +53,11 @@ struct ContentView: View {
         }
         .inspector(isPresented: inspectorBinding) {
             VStack(spacing: 0) {
-                CanvasInspector(document: document, editor: editor)
-                    .frame(maxHeight: 170)
+                ToolInspector(document: document, editor: editor)
+                    .frame(maxHeight: .infinity)
                 Divider()
                 LayersAndHistory(document: document, editor: editor)
+                    .frame(minHeight: 280)
             }
             .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
         }
@@ -155,34 +158,6 @@ struct StatusLine: View {
             .accessibilityIdentifier("Status")
             .accessibilityLabel("Status")
             .accessibilityValue(editor.status)
-    }
-}
-
-/// The inspector's canvas details. Layers / History and each tool's settings join it as those
-/// pieces are built (steps 3 and 4).
-struct CanvasInspector: View {
-    @ObservedObject var document: LayerworksDocument
-    @ObservedObject var editor: EditorState
-
-    var body: some View {
-        Form {
-            Section("Selected Layer") {
-                Text(document.layer(editor.selectedLayer)?.name ?? "None")
-                    .accessibilityIdentifier("Selected layer")
-            }
-            Section("Canvas") {
-                LabeledContent("Size",
-                               value: "\(document.manifest.canvasWidth) × \(document.manifest.canvasHeight) pixels")
-                    .accessibilityIdentifier("Canvas size")
-                LabeledContent("Resolution", value: "\(document.manifest.ppi) ppi")
-            }
-            Section {
-                Text(BuildStamp.line)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .formStyle(.grouped)
     }
 }
 

@@ -62,8 +62,8 @@ final class LayerworksUITests: XCTestCase {
         level.click()
         XCTAssertEqual(level.value as? String, "100%", "clicking the zoom level returns to 100%")
 
-        let size = app.descendants(matching: .any)["Canvas size"].firstMatch
-        XCTAssertTrue(size.waitForExistence(timeout: 5), "the inspector shows the canvas size")
+        let tool = app.descendants(matching: .any)["Current tool"].firstMatch
+        XCTAssertTrue(tool.waitForExistence(timeout: 5), "the inspector names the tool")
 
         app.typeKey("f", modifierFlags: [.command, .shift])
         XCTAssertFalse(level.waitForExistence(timeout: 2), "canvas focus hides the Zoom panel")
@@ -127,6 +127,44 @@ final class LayerworksUITests: XCTestCase {
         app.typeKey("z", modifierFlags: .command)
         XCTAssertTrue(app.buttons["Layer 2"].firstMatch.waitForExistence(timeout: 5),
                       "⌘Z after a look goes back to where you were")
+        #endif
+    }
+
+    /// Build step 4a (Blueprint 029 / 043 / 044): the tool box, the Canvas tool (every picture
+    /// opens on it; a new size is a History step), and the Palette tool.
+    @MainActor
+    func testToolBoxCanvasAndPalette() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        let any = app.descendants(matching: .any)
+        XCTAssertTrue(app.buttons["Canvas"].firstMatch.waitForExistence(timeout: 10), "the tool box has Canvas")
+        XCTAssertTrue(app.buttons["Palette"].firstMatch.exists, "the tool box has Palette")
+        XCTAssertEqual(text(any["Current tool"].firstMatch), "Canvas", "every picture opens on the Canvas tool")
+
+        let height = app.textFields["Height"].firstMatch
+        func size() -> String { "\(app.textFields["Width"].firstMatch.value as? String ?? "?") by \(height.value as? String ?? "?")" }
+        XCTAssertEqual(size(), "1,024 by 1,024")
+        let width = app.textFields["Width"].firstMatch
+        width.click()
+        width.typeKey("a", modifierFlags: .command)
+        width.typeText("800\t")
+        app.buttons["Apply Size"].firstMatch.click()
+        XCTAssertEqual(size(), "800 by 1,024", "Apply Size changes the canvas")
+        app.buttons["Swap Width and Height"].firstMatch.click()
+        XCTAssertEqual(size(), "1,024 by 800", "swap makes it landscape")
+        app.typeKey("z", modifierFlags: .command)
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertEqual(size(), "1,024 by 1,024", "Undo steps the size back through History")
+
+        app.buttons["Palette"].firstMatch.click()
+        XCTAssertEqual(text(any["Current tool"].firstMatch), "Palette")
+        XCTAssertTrue(app.buttons["Color 8, #AF52DE"].firstMatch.waitForExistence(timeout: 5), "eight starting colors")
+        XCTAssertFalse(app.buttons["Remove"].firstMatch.isEnabled, "the palette never drops below eight")
+        app.buttons["Add Color"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Color 9, #000000"].firstMatch.waitForExistence(timeout: 5), "Add Color grows the palette")
+        XCTAssertTrue(app.buttons["Remove"].firstMatch.isEnabled)
         #endif
     }
 }

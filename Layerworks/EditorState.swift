@@ -24,6 +24,10 @@ final class EditorState: ObservableObject {
     @Published var selectedLayer: UUID?
     /// Layers checked for Merge / Link — never the selection.
     @Published var checked: Set<UUID> = []
+    /// The chosen tool. Every picture opens on the Canvas tool (043).
+    @Published var tool: Tool = .canvas
+    /// The palette swatch in use (044).
+    @Published var colorIndex = 0
     /// Size of the visible canvas area, kept current by the canvas view; Fit uses it.
     var viewport: CGSize = .zero
     /// Canvas size in pixels, kept current by the editor.
