@@ -572,6 +572,20 @@ final class LayerworksUITests: XCTestCase {
         #endif
     }
 
+    /// Build step 7b (Blueprint 075): Settings holds command mode's job folder. The jobs themselves
+    /// are checked by Scripts/test-command-mode.sh (a UI test can't reach the job folder).
+    @MainActor
+    func testCommandModeSettings() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey(",", modifierFlags: .command)
+        let folder = app.descendants(matching: .any)["Job folder"].firstMatch
+        XCTAssertTrue(folder.waitForExistence(timeout: 5), "Settings shows the job folder")
+        XCTAssertTrue(app.buttons["Choose…"].firstMatch.exists)
+        #endif
+    }
+
     /// Build step 6b (Blueprint 066 / 067): File ▸ Storyboard… (⌥⌘B, not on the toolbar) orders the
     /// Camera frames, sets a transition and a soundtrack, plays, and Export writes a real video.
     @MainActor
@@ -626,6 +640,9 @@ final class LayerworksUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: played, object: status)], timeout: 30),
                        .completed, "Play makes and plays the video, status: \(status.value ?? "")")
         sheet.buttons["Done"].firstMatch.click()
+        // Let the Storyboard sheet finish closing before Export opens its own sheet.
+        XCTAssertTrue(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"),
+                                                                       object: length)], timeout: 5) == .completed)
 
         // File ▸ Export… ▸ Video (Storyboard), H.264.
         app.typeKey("e", modifierFlags: .command)

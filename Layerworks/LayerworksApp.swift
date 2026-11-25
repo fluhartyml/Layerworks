@@ -16,6 +16,13 @@ import AppKit
 
 @main
 struct LayerworksApp: App {
+    init() {
+        #if os(macOS)
+        // 075: `Layerworks --command job.json` runs a job with no window, then exits.
+        CommandMode.runIfRequested()
+        #endif
+    }
+
     var body: some Scene {
         DocumentGroup(newDocument: { LayerworksDocument() }) { file in
             ContentView(document: file.document)
@@ -41,6 +48,9 @@ struct LayerworksApp: App {
             #endif
             InspectorCommands()
         }
+        #if os(macOS)
+        Settings { CommandSettingsView() }
+        #endif
     }
 }
 

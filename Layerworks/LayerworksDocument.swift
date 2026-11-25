@@ -65,6 +65,13 @@ final class LayerworksDocument: ReferenceFileDocument {
         render()
     }
 
+    /// A picture read outside the document system (command mode's "open").
+    init(manifest: ProjectManifest, blobs: [String: Data]) {
+        self.manifest = manifest
+        self.blobs = blobs
+        render()
+    }
+
     nonisolated init(configuration: ReadConfiguration) throws {
         let (manifest, blobs) = try PackageLayout.read(configuration.file)
         _manifest = Published(initialValue: manifest)
