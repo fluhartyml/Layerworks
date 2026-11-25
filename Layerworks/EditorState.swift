@@ -42,6 +42,9 @@ final class EditorState: ObservableObject {
     @Published var adjustment: Adjustment = .levels
     /// The Lightbox is playing (058).
     @Published var playing = false
+    /// File ▸ Export… (⌘E) and File ▸ Print… (⌘P) are showing.
+    @Published var exporting = false
+    @Published var printing = false
 
     func optimize(_ document: LayerworksDocument, undoManager: UndoManager?) {
         let freed = document.optimizeHistory(undoManager: undoManager)

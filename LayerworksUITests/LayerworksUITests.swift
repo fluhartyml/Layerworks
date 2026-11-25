@@ -507,6 +507,44 @@ final class LayerworksUITests: XCTestCase {
         XCTAssertFalse(app.buttons["Exit Preview"].firstMatch.waitForExistence(timeout: 2))
         #endif
     }
+
+    /// Build step 6a (Blueprint 061 / 043): File ▸ Export… (⌘E) writes a PNG, an Icon Set folder
+    /// and a Print PDF through Apple's save panel (into a scratch folder, never his Desktop).
+    @MainActor
+    func testExport() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
+        let status = app.descendants(matching: .any)["Status"].firstMatch
+        XCTAssertTrue(app.buttons["Text"].firstMatch.waitForExistence(timeout: 10))
+        app.buttons["Text"].firstMatch.click()
+        type("Export me\r", into: app.textFields["Text"].firstMatch)
+        XCTAssertTrue(app.toolbars.buttons["Share"].firstMatch.exists || app.buttons["Share"].firstMatch.exists, "Share is on the toolbar")
+
+        for (format, file) in [("PNG", "Layerworks Picture.png"), ("Icon Set (light and dark)", "Layerworks Picture"),
+                               ("Print PDF (bleed and marks)", "Layerworks Picture.pdf")] {
+            app.typeKey("e", modifierFlags: .command)
+            let picker = app.popUpButtons["Format"].firstMatch
+            XCTAssertTrue(picker.waitForExistence(timeout: 5), "⌘E opens Export")
+            picker.click()
+            app.menuItems[format].firstMatch.click()
+            app.buttons["Export…"].firstMatch.click()
+            // Apple's save panel: go to the scratch folder, then Save.
+            let panel = app.sheets.firstMatch
+            XCTAssertTrue(panel.waitForExistence(timeout: 10), "Apple's save panel opens")
+            app.typeKey("g", modifierFlags: [.command, .shift])
+            app.typeText("/private/tmp/claude-501/-Users-michaelfluharty-Developer-complex-CLI-Claude-Apartment/9d3fde70-442c-4792-8d72-6f0503513956/scratchpad/exports\r")
+            sleep(1)
+            let save = app.buttons["Save"].firstMatch
+            if save.waitForExistence(timeout: 3) { save.click() } else { app.typeKey(.return, modifierFlags: []) }
+            let replace = app.buttons["Replace"].firstMatch
+            if replace.waitForExistence(timeout: 2) { replace.click() }
+            XCTAssertTrue(waitFor(status, "Exported \(file)"), "\(format) exported, status: \(status.value ?? "")")
+        }
+        #endif
+    }
 }
 
 /// A static text's words: macOS reports them as the value, iOS as the label.

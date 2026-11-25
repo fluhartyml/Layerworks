@@ -140,6 +140,8 @@ nonisolated struct ProjectManifest: Codable, Equatable, Sendable {
     var mask: MaskSpec?
     /// The Lightbox's frames (058), oldest first.
     var frames: [AnimFrame] = []
+    /// Print setup (043): bleed, safe margin, crop / registration marks, RGB or CMYK.
+    var printSetup = PrintSetup()
 
     init(canvasWidth: Int, canvasHeight: Int, ppi: Int = 300, layers: [Layer] = Layer.newPicture()) {
         self.canvasWidth = canvasWidth
@@ -166,6 +168,7 @@ nonisolated struct ProjectManifest: Codable, Equatable, Sendable {
         palette = Palette.normalized(try c.decodeIfPresent([String].self, forKey: .palette) ?? Palette.starting)
         mask = try c.decodeIfPresent(MaskSpec.self, forKey: .mask)
         frames = try c.decodeIfPresent([AnimFrame].self, forKey: .frames) ?? []
+        printSetup = try c.decodeIfPresent(PrintSetup.self, forKey: .printSetup) ?? PrintSetup()
         historyCursor = min(max(try c.decodeIfPresent(Int.self, forKey: .historyCursor) ?? history.count - 1, 0),
                             history.count - 1)
     }

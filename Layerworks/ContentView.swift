@@ -58,6 +58,18 @@ struct ContentView: View {
             .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
         }
         .toolbar {
+            // 030: on the document bar, Export and Share only (About is in the app menu).
+            ToolbarItem {
+                Button { editor.exporting = true } label: { Label("Export", systemImage: "square.and.arrow.up.on.square") }
+                    .help("Export… (⌘E)")
+            }
+            ToolbarItem {
+                ShareLink(item: SharedPicture(manifest: document.manifest, blobs: document.blobs),
+                          preview: SharePreview("Layerworks Picture")) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                .help("Share a PNG of the picture")
+            }
             ToolbarItem {
                 Button {
                     showInspector.toggle()
@@ -71,6 +83,12 @@ struct ContentView: View {
         }
         .focusedSceneObject(editor)
         .focusedSceneObject(document)
+        .sheet(isPresented: $editor.exporting) { ExportSheet(document: document, editor: editor) }
+        .onChange(of: editor.printing) { _, now in
+            guard now else { return }
+            editor.printing = false
+            PrintPicture.run(document, editor)
+        }
         .overlay { if editor.playing { LightboxPlayer(document: document, editor: editor) } }
         #if os(macOS)
         // 058: on the Mac, Apple's File ▸ Import from iPhone (Take Photo / Scan) drops into a new layer.
