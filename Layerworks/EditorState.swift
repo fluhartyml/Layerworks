@@ -34,6 +34,10 @@ final class EditorState: ObservableObject {
     @Published var askPurge = false
     /// Move / Crop in progress (045); committed when the tool is left.
     @Published var moveDraft: MoveDraft?
+    /// The selection (047), in canvas pixels. nil = nothing selected.
+    @Published var selection: PixelRect?
+    /// The layer this run of Magic Lasso clears is collecting on (056).
+    var lassoLayer: UUID?
 
     func optimize(_ document: LayerworksDocument, undoManager: UndoManager?) {
         let freed = document.optimizeHistory(undoManager: undoManager)

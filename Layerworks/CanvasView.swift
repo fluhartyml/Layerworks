@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 // REM: Blueprint 029 — the canvas. It scrolls both ways (drag to pan on iPhone and iPad, scroll
 // on the Mac), pinches to zoom, and on the Mac Option-double-click zooms out and
@@ -15,6 +16,7 @@ import SwiftUI
 struct CanvasView: View {
     @ObservedObject var document: LayerworksDocument
     @ObservedObject var editor: EditorState
+    @Environment(\.undoManager) private var undoManager
     @State private var pinchBase: CGFloat?
     @State private var didFirstFit = false
 
@@ -26,6 +28,7 @@ struct CanvasView: View {
                     .accessibilityIdentifier("Canvas picture")
                     .overlay { CanvasInteraction(document: document, editor: editor) }
                     .overlay { if editor.tool == .move { MoveOverlay(document: document, editor: editor) } }
+                    .overlay { SelectMaskOverlay(document: document, editor: editor) }
                     .shadow(color: .black.opacity(0.25), radius: 2)
                     .padding(EditorState.margin)
                     .frame(minWidth: proxy.size.width, minHeight: proxy.size.height)
@@ -36,6 +39,16 @@ struct CanvasView: View {
             }
             .scrollIndicators(.automatic)
             .simultaneousGesture(pinch)
+            #if os(macOS)
+            // 047: with the Selection tool and the canvas focused, Edit ▸ Copy / Paste / Delete act
+            // on the picture; text fields keep their own Copy and Paste.
+            .focusable(editor.tool == .selection)
+            .onCopyCommand { editor.tool == .selection ? SelectionActions.providers(document, editor) : [] }
+            .onPasteCommand(of: [.image, .png, .tiff]) { _ in
+                if editor.tool == .selection { SelectionActions.paste(document, editor, undoManager) }
+            }
+            .onDeleteCommand { if editor.tool == .selection { SelectionActions.clear(document, editor, undoManager) } }
+            #endif
             .background(Color.gray.opacity(0.15))
             .overlay { FloatingPreview(document: document) }
             .onAppear { update(viewport: proxy.size) }

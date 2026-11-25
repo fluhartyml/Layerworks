@@ -129,6 +129,8 @@ nonisolated struct ProjectManifest: Codable, Equatable, Sendable {
     var historyCursor: Int = 0
     /// The document palette (044): every color in the app comes from it.
     var palette: [String] = Palette.starting
+    /// The mask (048): what exports keep. nil = the whole canvas.
+    var mask: MaskSpec?
 
     init(canvasWidth: Int, canvasHeight: Int, ppi: Int = 300, layers: [Layer] = Layer.newPicture()) {
         self.canvasWidth = canvasWidth
@@ -153,6 +155,7 @@ nonisolated struct ProjectManifest: Codable, Equatable, Sendable {
                                    canvasWidth: canvasWidth, canvasHeight: canvasHeight)]
         }
         palette = Palette.normalized(try c.decodeIfPresent([String].self, forKey: .palette) ?? Palette.starting)
+        mask = try c.decodeIfPresent(MaskSpec.self, forKey: .mask)
         historyCursor = min(max(try c.decodeIfPresent(Int.self, forKey: .historyCursor) ?? history.count - 1, 0),
                             history.count - 1)
     }

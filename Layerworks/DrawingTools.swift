@@ -20,7 +20,7 @@ enum BrushShape: String, CaseIterable { case circle = "Circle", square = "Square
 
 extension Tool {
     /// Tools that act on the picture itself (the canvas takes clicks and drags for them).
-    var usesCanvas: Bool { [.bucket, .pen, .eraser, .eyedropper].contains(self) }
+    var usesCanvas: Bool { [.bucket, .pen, .eraser, .eyedropper, .lasso].contains(self) }
 }
 
 // MARK: - Settings in the inspector
@@ -209,6 +209,7 @@ struct CanvasInteraction: View {
     @AppStorage("lw.eraser.size") private var eraserSize = 24.0
     @AppStorage("lw.eraser.tolerance") private var magicTolerance = 0.1
     @AppStorage("lw.eyedropper.sample") private var sample = 1
+    @AppStorage("lw.lasso.tolerance") private var lassoTolerance = 0.1
 
     @State private var points: [CGPoint] = []
     @State private var strokeErases = false
@@ -230,7 +231,7 @@ struct CanvasInteraction: View {
                 #endif
         }
         .allowsHitTesting(editor.tool.usesCanvas)
-        .onChange(of: editor.tool) { _, _ in preview = nil; refreshMagicPreview() }
+        .onChange(of: editor.tool) { _, _ in preview = nil; editor.lassoLayer = nil; refreshMagicPreview() }
         .onChange(of: editor.magicColor) { _, _ in refreshMagicPreview() }
         .onChange(of: magicTolerance) { _, _ in refreshMagicPreview() }
         .onChange(of: eraserMode) { _, _ in preview = nil; refreshMagicPreview() }
@@ -309,6 +310,23 @@ struct CanvasInteraction: View {
             select(document.fork(id, into: b, label: "Erase", title: "Eraser", undoManager: undoManager), "Erased")
         case .eyedropper:
             pickColor(x, y)
+        case .lasso:
+            // 056: the first clear starts one new layer (original hidden); later clears in the
+            // same run land on it, each its own History step.
+            guard let before = document.bitmap(of: id), before.contains(x, y) else { return }
+            var b = before
+            b.clear(b.region(from: x, y, tolerance: lassoTolerance))
+            if b.pixels == before.pixels {
+                editor.status = "Nothing left to clear there"
+            } else if editor.lassoLayer == id {
+                document.replacePicture(id, with: b, title: "Magic Lasso", undoManager: undoManager)
+                editor.status = "Cleared another area"
+            } else if let new = document.fork(id, into: b, label: "Lasso", title: "Magic Lasso", undoManager: undoManager) {
+                editor.lassoLayer = new
+                select(new, "Cleared an area")
+            }
+            preview = nil
+            hoverPixel = nil
         default: break
         }
     }
@@ -406,15 +424,16 @@ struct CanvasInteraction: View {
     #if os(macOS)
     /// Bucket: hover shows where the paint would go (049).
     private func hover(_ phase: HoverPhase) {
-        guard editor.tool == .bucket, let id = editor.selectedLayer else { return }
+        guard editor.tool == .bucket || editor.tool == .lasso, let id = editor.selectedLayer else { return }
         switch phase {
         case .active(let loc):
             let p = pixel(loc)
             if let h = hoverPixel, h == p { return }
             hoverPixel = p
+            let lasso = editor.tool == .lasso
             guard let b = document.bitmap(of: id), b.contains(p.0, p.1),
-                  let c = RGBA(hex: editor.color(in: document)) else { preview = nil; return }
-            preview = maskImage(b.region(from: p.0, p.1, tolerance: bucketTolerance),
+                  let c = lasso ? RGBA(r: 255, g: 0, b: 0) : RGBA(hex: editor.color(in: document)) else { preview = nil; return }
+            preview = maskImage(b.region(from: p.0, p.1, tolerance: lasso ? lassoTolerance : bucketTolerance),
                                 width: b.width, height: b.height, color: c)
         case .ended:
             hoverPixel = nil

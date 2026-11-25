@@ -15,7 +15,7 @@ import UniformTypeIdentifiers
 // Only finished tools are in the box (his rule: no placeholders) — each step-4 slice adds its own.
 
 enum Tool: String, CaseIterable, Identifiable {
-    case canvas, palette, move, bucket, pen, eraser, eyedropper, text, symbol, image
+    case canvas, palette, move, selection, mask, bucket, pen, eraser, eyedropper, text, symbol, image, lasso
     var id: String { rawValue }
 
     var title: String {
@@ -23,6 +23,9 @@ enum Tool: String, CaseIterable, Identifiable {
         case .canvas: "Canvas"
         case .palette: "Palette"
         case .move: "Move"
+        case .selection: "Selection"
+        case .mask: "Mask"
+        case .lasso: "Magic Lasso"
         case .bucket: "Paint Bucket"
         case .pen: "Pen"
         case .eraser: "Eraser"
@@ -33,9 +36,10 @@ enum Tool: String, CaseIterable, Identifiable {
         }
     }
 
-    /// The image set in Assets.xcassets.
-    var asset: String {
+    /// Image Producer's own tool image, where it had one (copied byte for byte).
+    var asset: String? {
         switch self {
+        case .selection, .mask, .lasso: nil
         case .canvas: "CanvasTool"
         case .palette: "PaletteTool"
         case .move: "MoveTool"
@@ -46,6 +50,18 @@ enum Tool: String, CaseIterable, Identifiable {
         case .text: "FontBook"
         case .symbol: "SFPickerTool"
         case .image: "PhotoTool"
+        }
+    }
+}
+
+extension Tool {
+    /// Image Producer's SF Symbols for the tools that had no image of their own.
+    var symbol: String {
+        switch self {
+        case .selection: "rectangle.dashed"
+        case .mask: "theatermasks"
+        case .lasso: "lasso.badge.sparkles"
+        default: "questionmark.square"
         }
     }
 }
@@ -91,14 +107,21 @@ struct ToolButton: View {
 
     private var chosen: Bool { editor.tool == tool }
 
+    /// Image Producer's tool image, or the SF Symbol it used for tools without one.
+    @ViewBuilder private var icon: some View {
+        if let asset = tool.asset {
+            Image(asset).resizable().scaledToFit()
+        } else {
+            Image(systemName: tool.symbol).resizable().scaledToFit().padding(4)
+        }
+    }
+
     var body: some View {
         Button {
             editor.tool = tool
             editor.status = "\(tool.title) tool"
         } label: {
-            Image(tool.asset)
-                .resizable()
-                .scaledToFit()
+            icon
                 .padding(6)
                 .frame(width: side, height: side)
                 .background(chosen ? Color.accentColor.opacity(0.25) : Color.clear,
@@ -133,6 +156,9 @@ struct ToolInspector: View {
             case .canvas: CanvasToolView(document: document, editor: editor)
             case .palette: PaletteToolView(document: document, editor: editor)
             case .move: MoveToolView(document: document, editor: editor)
+            case .selection: SelectionToolView(document: document, editor: editor)
+            case .mask: MaskToolView(document: document, editor: editor)
+            case .lasso: LassoToolView()
             case .bucket: BucketToolView(document: document, editor: editor)
             case .pen: PenToolView(document: document, editor: editor)
             case .eraser: EraserToolView(document: document, editor: editor)

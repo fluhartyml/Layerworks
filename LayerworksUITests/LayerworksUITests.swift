@@ -315,6 +315,63 @@ final class LayerworksUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Hi (Crop 1)"].firstMatch.waitForExistence(timeout: 5), "Apply Crop makes a new layer")
         #endif
     }
+
+    /// Build step 4d2 (Blueprint 047 / 048 / 056): Select All, Copy, Paste as a layer, Clear;
+    /// Add / Remove Mask; two Magic Lasso clears land on ONE new layer as two History steps.
+    @MainActor
+    func testSelectionMaskLasso() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
+        let any = app.descendants(matching: .any)
+        let status = any["Status"].firstMatch
+        XCTAssertTrue(app.buttons["Text"].firstMatch.waitForExistence(timeout: 10))
+        app.radioButtons["Layers"].firstMatch.click()
+        app.buttons["Text"].firstMatch.click()
+        let words = app.textFields["Text"].firstMatch
+        words.click()
+        words.typeText("Hi\r")
+        XCTAssertTrue(app.buttons["Hi"].firstMatch.waitForExistence(timeout: 5))
+
+        app.buttons["Selection"].firstMatch.click()
+        app.buttons["Select All"].firstMatch.click()
+        app.buttons["Copy"].firstMatch.click()
+        XCTAssertTrue((status.value as? String ?? "").hasPrefix("Copied"), "Copy puts the selection on the pasteboard")
+        app.buttons["Paste"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Pasted"].firstMatch.waitForExistence(timeout: 5), "Paste makes a new layer")
+        app.buttons["Hi"].firstMatch.click()
+        app.buttons["Clear"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Hi (Clear 1)"].firstMatch.waitForExistence(timeout: 5), "Clear works on a new layer")
+
+        app.buttons["Mask"].firstMatch.click()
+        app.buttons["Add Mask"].firstMatch.click()
+        XCTAssertEqual(status.value as? String, "Mask added")
+        app.buttons["Remove Mask"].firstMatch.click()
+        XCTAssertEqual(status.value as? String, "Mask removed")
+
+        // Magic Lasso on a filled layer: two clears, one layer.
+        app.buttons["Layer 1"].firstMatch.click()
+        app.buttons["Paint Bucket"].firstMatch.click()
+        app.buttons["Fill Layer"].firstMatch.click()
+        // A red square in the middle of the black layer gives the lasso two separate areas.
+        app.buttons["Palette"].firstMatch.click()
+        app.buttons["Color 3, #FF3B30"].firstMatch.click()
+        app.buttons["Pen"].firstMatch.click()
+        let canvas = any["Canvas picture"].firstMatch
+        canvas.click()
+        XCTAssertTrue(app.buttons["Layer 1 (Pixel 1)"].firstMatch.waitForExistence(timeout: 5))
+        app.buttons["Magic Lasso"].firstMatch.click()
+        canvas.click()
+        XCTAssertTrue(app.buttons["Layer 1 (Lasso 1)"].firstMatch.waitForExistence(timeout: 5), "the first clear starts one layer")
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).click()
+        XCTAssertEqual(status.value as? String, "Cleared another area")
+        XCTAssertFalse(app.buttons["Layer 1 (Lasso 2)"].exists, "later clears land on the same layer")
+        app.radioButtons["History"].firstMatch.click()
+        XCTAssertEqual(any.matching(identifier: "History step Magic Lasso").count, 2, "each clear is its own History step")
+        #endif
+    }
 }
 
 /// A static text's words: macOS reports them as the value, iOS as the label.
