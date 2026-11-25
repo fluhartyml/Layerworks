@@ -35,4 +35,44 @@ final class LayerworksUITests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
         #endif
     }
+
+    /// Build step 2 (Blueprint 029): View-menu zoom shortcuts, the tappable zoom level, the
+    /// status line, canvas focus and the inspector's canvas size.
+    @MainActor
+    func testZoomFocusStatusAndInspector() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        let level = app.descendants(matching: .any)["Zoom level"].firstMatch
+        XCTAssertTrue(level.waitForExistence(timeout: 10), "the Zoom panel shows the zoom level")
+        let status = app.descendants(matching: .any)["Status"].firstMatch
+        XCTAssertTrue(status.exists, "the status line is on screen")
+
+        app.typeKey("0", modifierFlags: .command)
+        XCTAssertEqual(level.value as? String, "100%", "⌘0 is Actual Size")
+        XCTAssertEqual(status.value as? String, "Zoomed to 100%", "the status line reports the zoom")
+
+        app.typeKey("=", modifierFlags: .command)
+        XCTAssertEqual(level.value as? String, "150%", "⌘= steps up from 100% to 150%")
+        app.typeKey("-", modifierFlags: .command)
+        app.typeKey("-", modifierFlags: .command)
+        XCTAssertEqual(level.value as? String, "67%", "⌘− steps down evenly: 150 → 100 → 67")
+
+        level.click()
+        XCTAssertEqual(level.value as? String, "100%", "clicking the zoom level returns to 100%")
+
+        let size = app.descendants(matching: .any)["Canvas size"].firstMatch
+        XCTAssertTrue(size.waitForExistence(timeout: 5), "the inspector shows the canvas size")
+
+        app.typeKey("f", modifierFlags: [.command, .shift])
+        XCTAssertFalse(level.waitForExistence(timeout: 2), "canvas focus hides the Zoom panel")
+        let exit = app.buttons["Exit Canvas Focus"].firstMatch
+        XCTAssertTrue(exit.exists, "canvas focus keeps one way back on screen")
+        exit.click()
+        XCTAssertTrue(level.waitForExistence(timeout: 5), "leaving focus brings the Zoom panel back")
+        XCTAssertTrue(app.descendants(matching: .any)["Floating preview"].firstMatch.exists,
+                      "the floating preview switch is in the Zoom panel")
+        #endif
+    }
 }

@@ -24,6 +24,33 @@ struct LayerworksApp: App {
             #if os(macOS)
             SaveCommands()
             #endif
+            ZoomCommands()
+            InspectorCommands()
+        }
+    }
+}
+
+/// Blueprint 029 — zoom and canvas focus in Apple's View menu, with the usual shortcuts
+/// (⌘= / ⌘− / ⌘0 like Preview and Safari; ⌘9 fits the width). On iPad they work from a
+/// hardware keyboard. Each acts on the front window only.
+struct ZoomCommands: Commands {
+    @FocusedObject private var editor: EditorState?
+
+    var body: some Commands {
+        CommandGroup(after: .toolbar) {
+            Button("Zoom In") { editor?.zoomIn() }
+                .keyboardShortcut("=")
+            Button("Zoom Out") { editor?.zoomOut() }
+                .keyboardShortcut("-")
+            Button("Actual Size") { editor?.actualSize() }
+                .keyboardShortcut("0")
+            Button("Fit Width") { editor?.fitWidth() }
+                .keyboardShortcut("9")
+            Button(editor?.focusMode == true ? "Exit Canvas Focus" : "Canvas Focus") {
+                editor?.toggleFocusMode()
+            }
+            .keyboardShortcut("f", modifiers: [.command, .shift])
+            Divider()
         }
     }
 }
