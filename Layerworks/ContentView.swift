@@ -84,6 +84,7 @@ struct ContentView: View {
         .focusedSceneObject(editor)
         .focusedSceneObject(document)
         .sheet(isPresented: $editor.exporting) { ExportSheet(document: document, editor: editor) }
+        .sheet(isPresented: $editor.storyboarding) { StoryboardSheet(document: document, editor: editor) }
         .onChange(of: editor.printing) { _, now in
             guard now else { return }
             editor.printing = false

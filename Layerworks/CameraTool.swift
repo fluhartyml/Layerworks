@@ -202,6 +202,8 @@ struct CameraToolView: View {
                     .disabled(document.manifest.frames.isEmpty)
                 }
                 .buttonStyle(.borderless)
+                Button("Storyboard…") { editor.storyboarding = true }
+                    .disabled(document.manifest.frames.isEmpty)
                 Text("Put moving parts on their own layers, Move them, then Capture Frame again. A move that isn't captured isn't kept.")
                     .font(.callout).foregroundStyle(.secondary)
             } header: { Text("Lightbox") }

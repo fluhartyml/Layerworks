@@ -86,7 +86,17 @@ nonisolated enum ContentRender {
         camera.orthographicScale = Double(max(w, h) * 0.75)
         let cameraNode = SCNNode()
         cameraNode.camera = camera
-        cameraNode.position = SCNVector3(0, 0, Float(max(w, h) * 3))
+        let distance = max(w, h) * 3
+        cameraNode.position = SCNVector3(0, 0, Float(distance))
+        // REM: SceneKit's default far plane is 100 units; 96-pixel letters sit ~230 away, so they
+        // were clipped and every 3D text layer came out blank (found 2026 NOV 25 in step 6b).
+        camera.zNear = 1
+        camera.zFar = Double(distance * 2 + CGFloat(depth))
+        #if canImport(AppKit)
+        scene.background.contents = NSColor.clear
+        #else
+        scene.background.contents = UIColor.clear
+        #endif
         scene.rootNode.addChildNode(cameraNode)
         let light = SCNNode(); light.light = SCNLight(); light.light?.type = .directional
         light.eulerAngles = SCNVector3(-0.6, 0.5, 0)

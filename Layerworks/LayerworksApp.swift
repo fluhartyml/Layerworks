@@ -31,6 +31,7 @@ struct LayerworksApp: App {
             HistoryCommands()
             AdjustCommands()
             ExportCommands()
+            StoryboardCommands()
             #if os(macOS)
             ImportFromDevicesCommands()
             #endif

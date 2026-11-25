@@ -45,6 +45,8 @@ final class EditorState: ObservableObject {
     /// File ▸ Export… (⌘E) and File ▸ Print… (⌘P) are showing.
     @Published var exporting = false
     @Published var printing = false
+    /// File ▸ Storyboard… (⌥⌘B) is showing (066).
+    @Published var storyboarding = false
 
     func optimize(_ document: LayerworksDocument, undoManager: UndoManager?) {
         let freed = document.optimizeHistory(undoManager: undoManager)

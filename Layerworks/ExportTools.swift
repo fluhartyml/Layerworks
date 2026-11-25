@@ -29,6 +29,8 @@ nonisolated enum ExportFormat: String, CaseIterable, Identifiable, Sendable {
     case pdf = "PDF", layersPDF = "PDF, one page per layer", animatedGIF = "Animated GIF (Camera frames)"
     case printPDF = "Print PDF (bleed and marks)", web = "Web folder of PNGs", appIcons = "Every app-icon size"
     case iconSet = "Icon Set (light and dark)"
+    /// 067: the Storyboard's video (Camera frames, holds, transitions, soundtrack).
+    case video = "Video (Storyboard)"
     var id: String { rawValue }
 
     var type: UTType {
@@ -41,6 +43,7 @@ nonisolated enum ExportFormat: String, CaseIterable, Identifiable, Sendable {
         case .bmp: .bmp
         case .pdf, .layersPDF, .printPDF: .pdf
         case .web, .appIcons, .iconSet: .folder
+        case .video: .mpeg4Movie
         }
     }
 
@@ -202,6 +205,8 @@ nonisolated enum Exporter {
             FileWrapper(directoryWithFileWrappers: Dictionary(files.compactMap { $0 }, uniquingKeysWith: { a, _ in a }))
         }
         switch format {
+        case .video:
+            return nil   // made off the main thread by VideoMaker (Storyboard.swift)
         case .png, .jpeg, .tiff, .heic, .gif, .bmp:
             guard let img = picture(m, blobs: blobs), let d = data(img, type: format.type) else { return nil }
             return FileWrapper(regularFileWithContents: d)
@@ -245,7 +250,7 @@ nonisolated enum Exporter {
 
 struct ExportFile: FileDocument {
     static var readableContentTypes: [UTType] { [] }
-    static var writableContentTypes: [UTType] { [.png, .jpeg, .tiff, .heic, .gif, .bmp, .pdf, .folder] }
+    static var writableContentTypes: [UTType] { [.png, .jpeg, .tiff, .heic, .gif, .bmp, .pdf, .folder, .mpeg4Movie, .quickTimeMovie] }
     var wrapper: FileWrapper
     init(wrapper: FileWrapper) { self.wrapper = wrapper }
     init(configuration: ReadConfiguration) throws { throw CocoaError(.fileReadUnsupportedScheme) }
@@ -260,8 +265,11 @@ struct ExportSheet: View {
     @Environment(\.undoManager) private var undoManager
     @AppStorage("lw.export.format") private var format = ExportFormat.png
     @AppStorage("lw.cam.fps") private var fps = 8.0
+    @AppStorage("lw.export.codec") private var codec = VideoCodec.h264
     @State private var file: ExportFile?
     @State private var saving = false
+    @State private var making: (done: Int, total: Int)?
+    @State private var job: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -280,16 +288,36 @@ struct ExportSheet: View {
                                                           : "\(document.manifest.frames.count) frames at \(Int(fps)) per second (the Lightbox speed).")
                         .foregroundStyle(.secondary)
                 }
+                if format == .video {
+                    Picker("Video format", selection: $codec) {
+                        ForEach(VideoCodec.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    .accessibilityLabel("Video format")
+                    let frames = document.manifest.frames
+                    Text(frames.isEmpty ? "No Camera frames yet: capture frames in the Camera tool first."
+                                        : "\(frames.count) frames, \(StoryboardSheet.seconds(document.manifest.storyboard.totalSeconds(frames, lightboxFPS: fps))), 30 frames per second, on white. Set holds, transitions and sound in File ▸ Storyboard….")
+                        .foregroundStyle(.secondary)
+                    if let making {
+                        ProgressView(value: Double(making.done), total: Double(max(making.total, 1))) {
+                            Text("Making frame \(making.done) of \(making.total)")
+                        }
+                        .accessibilityIdentifier("Making video")
+                    }
+                }
             }
             .formStyle(.grouped)
             .navigationTitle("Export")
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("Export…", action: prepare).keyboardShortcut(.defaultAction) }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { job?.cancel(); dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Export…", action: prepare).keyboardShortcut(.defaultAction)
+                        .disabled(making != nil || (format == .video && document.manifest.frames.isEmpty))
+                }
             }
         }
         .frame(minWidth: 420, minHeight: 320)
-        .fileExporter(isPresented: $saving, document: file, contentType: format.type, defaultFilename: baseName) { result in
+        .fileExporter(isPresented: $saving, document: file, contentType: format == .video ? codec.contentType : format.type,
+                      defaultFilename: baseName) { result in
             switch result {
             case .success(let url): editor.status = "Exported \(url.lastPathComponent)"
             case .failure(let error): editor.status = "Export failed: \(error.localizedDescription)"
@@ -301,12 +329,57 @@ struct ExportSheet: View {
     private var baseName: String { "Layerworks Picture" }
 
     private func prepare() {
+        if format == .video { makeVideo(); return }
         guard let w = Exporter.wrapper(format, manifest: document.manifest, blobs: document.blobs, name: baseName,
                                        fps: fps, setup: document.manifest.printSetup) else {
             editor.status = "That export couldn't be made"; return
         }
         file = ExportFile(wrapper: w)
-        saving = true
+        save()
+    }
+
+    /// Apple's save panel — or, only under the robot tests (LW_ROBOT in the launch environment),
+    /// straight into the app's own temporary "Robot Exports" folder (the sandbox allows no other).
+    /// REM: driving the save panel from XCUITest raced in full-suite runs (2026 NOV 25); the panel
+    /// itself was proven in earlier passing runs.
+    private func save() {
+        guard ProcessInfo.processInfo.environment["LW_ROBOT"] != nil, let file else { saving = true; return }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("Robot Exports").path
+        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        let ext = format == .video ? codec.fileExtension : format.type.preferredFilenameExtension
+        let name = ext.map { "\(baseName).\($0)" } ?? baseName
+        let url = URL(fileURLWithPath: dir).appendingPathComponent(name)
+        do {
+            try? FileManager.default.removeItem(at: url)
+            try file.wrapper.write(to: url, options: .atomic, originalContentsURL: nil)
+            editor.status = "Exported \(name)"
+        } catch {
+            editor.status = "Export failed: \(error.localizedDescription)"
+        }
+        dismiss()
+    }
+
+    /// 067: the Storyboard's video, made off the main thread, then Apple's save panel.
+    private func makeVideo() {
+        guard let input = VideoMaker.input(document, codec: codec, lightboxFPS: fps) else {
+            editor.status = "That export couldn't be made"; return
+        }
+        making = (0, input.plan.totalFrames)
+        editor.status = "Making the video"
+        job = Task {
+            do {
+                let url = try await VideoMaker.make(input) { done, total in
+                    Task { @MainActor in if making != nil { making = (done, total) } }
+                }
+                making = nil
+                file = ExportFile(wrapper: try FileWrapper(url: url, options: .immediate))
+                try? FileManager.default.removeItem(at: url)
+                save()
+            } catch {
+                making = nil
+                if !(error is CancellationError) { editor.status = "The video couldn't be made: \(error.localizedDescription)" }
+            }
+        }
     }
 }
 

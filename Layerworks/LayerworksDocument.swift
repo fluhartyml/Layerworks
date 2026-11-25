@@ -118,6 +118,13 @@ final class LayerworksDocument: ReferenceFileDocument {
         return key
     }
 
+    /// Stores a sound once (066 soundtrack) and returns its key; it is saved under Sounds/.
+    func storeSound(_ data: Data) -> String {
+        let key = "sound-" + PackageLayout.hash(data)
+        if blobs[key] == nil { blobs[key] = data }
+        return key
+    }
+
     // MARK: History
 
     /// Every edit comes through here: it becomes a new History step. Looking back and then

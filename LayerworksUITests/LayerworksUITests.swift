@@ -259,8 +259,8 @@ final class LayerworksUITests: XCTestCase {
         XCTAssertTrue(app.buttons["heart.fill"].firstMatch.waitForExistence(timeout: 5))
         XCTAssertEqual(status.value as? String, "Added heart.fill")
         let search = app.textFields["Search symbols"].firstMatch
-        search.click()
-        search.typeText("star.fill")
+        type("star.fill", into: search)
+        XCTAssertTrue(app.buttons["star.fill"].firstMatch.waitForExistence(timeout: 5))
         app.buttons["star.fill"].firstMatch.click()
         app.buttons["Apply to Selected Layer"].firstMatch.click()
         XCTAssertEqual(status.value as? String, "Swapped to star.fill", "Apply swaps the symbol in place")
@@ -305,7 +305,7 @@ final class LayerworksUITests: XCTestCase {
 
         app.buttons["Nudge Right"].firstMatch.click()
         app.buttons["Palette"].firstMatch.click()
-        XCTAssertTrue((status.value as? String ?? "").hasPrefix("Moved “Hi”"), "leaving the tool keeps the change")
+        XCTAssertTrue(waitForPrefix(status, "Moved “Hi”"), "leaving the tool keeps the change: \(status.value ?? "")")
 
         app.buttons["Move"].firstMatch.click()
         app.radioButtons["Crop"].firstMatch.click()
@@ -513,6 +513,7 @@ final class LayerworksUITests: XCTestCase {
     @MainActor
     func testExport() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["LW_ROBOT"] = "1"   // exports skip the save panel; Add Soundtrack uses a test tone
         app.launch()
         #if os(macOS)
         app.typeKey("n", modifierFlags: .command)
@@ -531,18 +532,81 @@ final class LayerworksUITests: XCTestCase {
             picker.click()
             app.menuItems[format].firstMatch.click()
             app.buttons["Export…"].firstMatch.click()
-            // Apple's save panel: go to the scratch folder, then Save.
-            let panel = app.sheets.firstMatch
-            XCTAssertTrue(panel.waitForExistence(timeout: 10), "Apple's save panel opens")
-            app.typeKey("g", modifierFlags: [.command, .shift])
-            app.typeText("/private/tmp/claude-501/-Users-michaelfluharty-Developer-complex-CLI-Claude-Apartment/9d3fde70-442c-4792-8d72-6f0503513956/scratchpad/exports\r")
-            sleep(1)
-            let save = app.buttons["Save"].firstMatch
-            if save.waitForExistence(timeout: 3) { save.click() } else { app.typeKey(.return, modifierFlags: []) }
-            let replace = app.buttons["Replace"].firstMatch
-            if replace.waitForExistence(timeout: 2) { replace.click() }
+            // Under the robot (LW_ROBOT) the export skips the save panel and goes to the app's Robot Exports folder.
             XCTAssertTrue(waitFor(status, "Exported \(file)"), "\(format) exported, status: \(status.value ?? "")")
         }
+        #endif
+    }
+
+    /// Build step 6b (Blueprint 066 / 067): File ▸ Storyboard… (⌥⌘B, not on the toolbar) orders the
+    /// Camera frames, sets a transition and a soundtrack, plays, and Export writes a real video.
+    @MainActor
+    func testStoryboardAndVideo() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["LW_ROBOT"] = "1"   // exports skip the save panel; Add Soundtrack uses a test tone
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
+        let any = app.descendants(matching: .any)
+        let status = any["Status"].firstMatch
+        XCTAssertFalse(app.toolbars.buttons["Storyboard"].exists, "067: no Storyboard button on the toolbar")
+        XCTAssertTrue(app.buttons["Text"].firstMatch.waitForExistence(timeout: 10))
+        app.radioButtons["Layers"].firstMatch.click()
+        app.buttons["Text"].firstMatch.click()
+        type("Hi\r", into: app.textFields["Text"].firstMatch)
+        XCTAssertTrue(app.buttons["Hi"].firstMatch.waitForExistence(timeout: 5))
+
+        app.buttons["Camera"].firstMatch.click()
+        let animation = app.switches["Animation mode"].firstMatch
+        XCTAssertTrue(animation.waitForExistence(timeout: 5))
+        if (animation.value as? Int) != 1 { animation.click() }
+        app.buttons["Capture Frame"].firstMatch.click()
+        app.buttons["Hi"].firstMatch.click()
+        app.buttons["Move"].firstMatch.click()
+        app.buttons["Nudge Right"].firstMatch.click()
+        app.buttons["Camera"].firstMatch.click()
+        app.buttons["Capture Frame"].firstMatch.click()
+        XCTAssertTrue(waitFor(any["Frame count"].firstMatch, "2 frames"))
+
+        // File ▸ Storyboard…
+        app.typeKey("b", modifierFlags: [.command, .option])
+        let length = any["Video length"].firstMatch
+        XCTAssertTrue(length.waitForExistence(timeout: 5), "⌥⌘B opens the Storyboard")
+        XCTAssertTrue(app.staticTexts["Frame 2"].firstMatch.exists)
+        let before = length.value as? String ?? ""
+        let then = app.popUpButtons["Transition after frame 1"].firstMatch
+        then.click()
+        app.menuItems["Dissolve"].firstMatch.click()
+        XCTAssertTrue(app.descendants(matching: .any)["Transition length after frame 1"].firstMatch.waitForExistence(timeout: 3),
+                      "a Dissolve gets a length")
+        XCTAssertNotEqual(length.value as? String ?? "", before, "the Dissolve adds to the video's length")
+
+        // Soundtrack through Apple's open panel.
+        app.buttons["Add Soundtrack…"].firstMatch.click()   // LW_ROBOT: a made tone, no open panel
+        XCTAssertTrue(waitFor(status, "Added the soundtrack Robot Tone.m4a"), "status: \(status.value ?? "")")
+
+        let sheet = app.sheets.firstMatch
+        sheet.buttons["Play"].firstMatch.click()
+        let played = NSPredicate(format: "value BEGINSWITH %@", "Playing the storyboard")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: played, object: status)], timeout: 30),
+                       .completed, "Play makes and plays the video, status: \(status.value ?? "")")
+        sheet.buttons["Done"].firstMatch.click()
+
+        // File ▸ Export… ▸ Video (Storyboard), H.264.
+        app.typeKey("e", modifierFlags: .command)
+        let picker = app.popUpButtons["Format"].firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        picker.click()
+        app.menuItems["Video (Storyboard)"].firstMatch.click()
+        let codec = app.popUpButtons["Video format"].firstMatch
+        XCTAssertTrue(codec.waitForExistence(timeout: 3))
+        codec.click()
+        app.menuItems["H.264 (.mp4)"].firstMatch.click()
+        app.buttons["Export…"].firstMatch.click()
+        let exported = NSPredicate(format: "value == %@", "Exported Layerworks Picture.mp4")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: exported, object: status)], timeout: 60),
+                       .completed, "the video is made and saved, status: \(status.value ?? "")")
         #endif
     }
 }
@@ -579,5 +643,12 @@ private func type(_ text: String, into field: XCUIElement) {
 @MainActor
 private func waitFor(_ element: XCUIElement, _ text: String) -> Bool {
     let done = NSPredicate(format: "value == %@", text)
+    return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: done, object: element)], timeout: 10) == .completed
+}
+
+/// Waits up to 10 s for an element's value to start with `prefix`.
+@MainActor
+private func waitForPrefix(_ element: XCUIElement, _ prefix: String) -> Bool {
+    let done = NSPredicate(format: "value BEGINSWITH %@", prefix)
     return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: done, object: element)], timeout: 10) == .completed
 }

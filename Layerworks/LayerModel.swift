@@ -142,6 +142,8 @@ nonisolated struct ProjectManifest: Codable, Equatable, Sendable {
     var frames: [AnimFrame] = []
     /// Print setup (043): bleed, safe margin, crop / registration marks, RGB or CMYK.
     var printSetup = PrintSetup()
+    /// The Storyboard (066): frame holds, transitions and a soundtrack. Empty = Lightbox speed.
+    var storyboard = StoryboardSpec()
 
     init(canvasWidth: Int, canvasHeight: Int, ppi: Int = 300, layers: [Layer] = Layer.newPicture()) {
         self.canvasWidth = canvasWidth
@@ -169,6 +171,7 @@ nonisolated struct ProjectManifest: Codable, Equatable, Sendable {
         mask = try c.decodeIfPresent(MaskSpec.self, forKey: .mask)
         frames = try c.decodeIfPresent([AnimFrame].self, forKey: .frames) ?? []
         printSetup = try c.decodeIfPresent(PrintSetup.self, forKey: .printSetup) ?? PrintSetup()
+        storyboard = try c.decodeIfPresent(StoryboardSpec.self, forKey: .storyboard) ?? StoryboardSpec()
         historyCursor = min(max(try c.decodeIfPresent(Int.self, forKey: .historyCursor) ?? history.count - 1, 0),
                             history.count - 1)
     }
@@ -240,6 +243,7 @@ nonisolated enum ImageProducerImport {
 nonisolated enum PackageLayout {
     static let manifestName = "manifest.json"
     static let imagesFolder = "Images"
+    static let soundsFolder = "Sounds"
     /// Blueprint 023a: Finder, Files, Spotlight and Open panels read a package's
     /// QuickLook/Thumbnail.png, so the file icon shows the picture.
     static let quickLookFolder = "QuickLook"
@@ -266,6 +270,12 @@ nonisolated enum PackageLayout {
                 blobs[(name as NSString).deletingPathExtension] = bytes
             }
         }
+        // 066: the soundtrack's bytes, by key (the file name without its extension).
+        for (name, file) in wrapper.fileWrappers?[soundsFolder]?.fileWrappers ?? [:] {
+            if let bytes = file.regularFileContents {
+                blobs[(name as NSString).deletingPathExtension] = bytes
+            }
+        }
         return (manifest, blobs)
     }
 
@@ -288,6 +298,15 @@ nonisolated enum PackageLayout {
         let imagesDir = FileWrapper(directoryWithFileWrappers: images)
         imagesDir.preferredFilename = imagesFolder
         children[imagesFolder] = imagesDir
+
+        if let sound = manifest.storyboard.soundtrack, let bytes = blobs[sound.key] {
+            let name = sound.key + "." + sound.fileExtension
+            let file = FileWrapper(regularFileWithContents: bytes)
+            file.preferredFilename = name
+            let soundsDir = FileWrapper(directoryWithFileWrappers: [name: file])
+            soundsDir.preferredFilename = soundsFolder
+            children[soundsFolder] = soundsDir
+        }
 
         if let png = Compositor.png(layers: manifest.layers, blobs: blobs,
                                     width: manifest.canvasWidth, height: manifest.canvasHeight,
