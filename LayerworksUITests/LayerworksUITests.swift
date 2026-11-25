@@ -23,6 +23,7 @@ final class LayerworksUITests: XCTestCase {
         app.launch()
         #if os(macOS)
         app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
         let canvas = app.descendants(matching: .any)["Canvas"].firstMatch
         XCTAssertTrue(canvas.waitForExistence(timeout: 10), "⌘N should open a window with a canvas")
         XCTAssertTrue(app.windows.firstMatch.title.hasPrefix("Untitled"),
@@ -44,6 +45,7 @@ final class LayerworksUITests: XCTestCase {
         app.launch()
         #if os(macOS)
         app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
         let level = app.descendants(matching: .any)["Zoom level"].firstMatch
         XCTAssertTrue(level.waitForExistence(timeout: 10), "the Zoom panel shows the zoom level")
         let status = app.descendants(matching: .any)["Status"].firstMatch
@@ -84,6 +86,7 @@ final class LayerworksUITests: XCTestCase {
         app.launch()
         #if os(macOS)
         app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
         let any = app.descendants(matching: .any)
         let layersTab = app.radioButtons["Layers"].firstMatch
         XCTAssertTrue(layersTab.waitForExistence(timeout: 10), "the right column has a Layers tab")
@@ -138,6 +141,7 @@ final class LayerworksUITests: XCTestCase {
         app.launch()
         #if os(macOS)
         app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
         let any = app.descendants(matching: .any)
         XCTAssertTrue(app.buttons["Canvas"].firstMatch.waitForExistence(timeout: 10), "the tool box has Canvas")
         XCTAssertTrue(app.buttons["Palette"].firstMatch.exists, "the tool box has Palette")
@@ -173,4 +177,14 @@ final class LayerworksUITests: XCTestCase {
 private func text(_ element: XCUIElement) -> String {
     let value = element.value as? String ?? ""
     return value.isEmpty ? element.label : value
+}
+
+/// The inspector's open/closed state is remembered between launches (his rule), so a test
+/// that needs it opens it first.
+@MainActor
+private func showInspector(_ app: XCUIApplication) {
+    #if os(macOS)
+    let show = app.buttons["Show Inspector"].firstMatch
+    if show.waitForExistence(timeout: 3) { show.click() }
+    #endif
 }
