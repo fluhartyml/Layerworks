@@ -30,6 +30,15 @@ final class EditorState: ObservableObject {
     @Published var colorIndex = 0
     /// The Magic Eraser's color, picked from the picture (051 / 052).
     @Published var magicColor: String?
+    /// Purge History asks first, from the History tab or File ▸ Purge History….
+    @Published var askPurge = false
+
+    func optimize(_ document: LayerworksDocument, undoManager: UndoManager?) {
+        let freed = document.optimizeHistory(undoManager: undoManager)
+        status = freed > 0
+            ? "Optimized History: freed \(ByteCountFormatter.string(fromByteCount: Int64(freed), countStyle: .file)), every step kept"
+            : "History is already as small as it can be"
+    }
     /// Size of the visible canvas area, kept current by the canvas view; Fit uses it.
     var viewport: CGSize = .zero
     /// Canvas size in pixels, kept current by the editor.

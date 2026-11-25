@@ -28,6 +28,7 @@ struct LayerworksApp: App {
             SaveCommands()
             #endif
             ZoomCommands()
+            HistoryCommands()
             #if os(macOS)
             NewFromImportCommand()
             #endif
@@ -88,3 +89,22 @@ struct SaveCommands: Commands {
     }
 }
 #endif
+
+/// File ▸ Optimize History and Purge History… (his lock 2026-11-25 13:11: "History's ⋯ menu
+/// becomes separate Optimize and Purge buttons (and File menu items)").
+struct HistoryCommands: Commands {
+    @FocusedObject private var editor: EditorState?
+    @FocusedObject private var document: LayerworksDocument?
+
+    var body: some Commands {
+        CommandGroup(after: .saveItem) {
+            Divider()
+            Button("Optimize History") {
+                if let editor, let document { editor.optimize(document, undoManager: nil) }
+            }
+            .disabled(document == nil)
+            Button("Purge History…") { editor?.askPurge = true }
+                .disabled(document == nil || (document?.history.count ?? 0) < 2)
+        }
+    }
+}

@@ -122,6 +122,14 @@ final class LayerworksUITests: XCTestCase {
             XCTAssertTrue(app.descendants(matching: .any)["History step \(step)"].firstMatch.waitForExistence(timeout: 5),
                           "History lists \(step)")
         }
+        // His lock 13:11: Optimize and Purge are their own buttons and File menu items.
+        app.buttons["Optimize History"].firstMatch.click()
+        XCTAssertEqual(app.descendants(matching: .any)["Status"].firstMatch.value as? String,
+                       "History is already as small as it can be")
+        app.menuBars.menuBarItems["File"].click()
+        XCTAssertTrue(app.menuItems["Optimize History"].exists && app.menuItems["Purge History…"].exists,
+                      "File ▸ Optimize History and Purge History…")
+        app.typeKey(.escape, modifierFlags: [])
         app.descendants(matching: .any)["History step Original"].firstMatch.click()
         XCTAssertEqual(app.descendants(matching: .any)["Status"].firstMatch.value as? String, "Looking at “Original”", "clicking a step looks at it; row hittable=\(app.descendants(matching: .any)["History step Original"].firstMatch.isHittable) frame=\(app.descendants(matching: .any)["History step Original"].firstMatch.frame) type=\(app.descendants(matching: .any)["History step Original"].firstMatch.elementType.rawValue) window=\(app.windows.firstMatch.frame)")
         app.radioButtons["Layers"].firstMatch.click()

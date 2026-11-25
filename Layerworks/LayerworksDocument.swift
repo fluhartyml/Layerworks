@@ -15,9 +15,9 @@ import CoreGraphics
 // the first Save panel (his word 2026-11-25: ImageProducerNNNN is superseded). After that,
 // Apple's autosave and Versions take over.
 //
-// REM: Blueprint 023 + Walk Q1/Q3 (approved 2026-11-25) — Layerworks is a NEW app beside Image
-// Producer, so it IMPORTS Image Producer's package type instead of exporting a second claim on
-// the same extensions. New files are written as .imgprd; .picprod and .iconproj stay readable.
+// REM: Walk Q1–Q3, his answers 2026-11-25 13:07–13:10 — Layerworks is a NEW app with its own
+// App Store listing and its own .layerworks document type. Image Producer's .imgprd / .picprod /
+// .iconproj open as imports; Save always writes .layerworks.
 //
 // REM: Blueprint 005 / 033 / 034 / 037 — History is the undo. Every edit is a History step
 // holding the whole layer stack (pictures shared by hash). Apple's standard Edit ▸ Undo / Redo
@@ -26,9 +26,14 @@ import CoreGraphics
 // UndoManager, crashed on layer deletes) stays impossible here because there is no store.
 
 extension UTType {
-    /// Image Producer's project package (imgprd / picprod / iconproj). Imported, not exported.
-    static let layerworksProject = UTType(importedAs: "com.nightgard.Image-Producer.project",
-                                         conformingTo: .package)
+    /// REM: his Q3 answer 2026-11-25 13:10 (via Grok): "Layerworks gets its own document type: a
+    /// .layerworks package with its own type identifier (suggested me.fluharty.layerworks.document).
+    /// Old .imgprd, .picprod and .iconproj files open as imports (imported types); Save always
+    /// writes .layerworks. Image Producer keeps its own file types while it stays live."
+    static let layerworksDocument = UTType(exportedAs: "me.fluharty.layerworks.document", conformingTo: .package)
+    /// Image Producer's project package (imgprd / picprod / iconproj). Imported: opened, never written.
+    static let imageProducerProject = UTType(importedAs: "com.nightgard.Image-Producer.project",
+                                            conformingTo: .package)
 }
 
 /// What Save writes: the manifest plus the pictures it refers to.
@@ -40,8 +45,8 @@ nonisolated struct ProjectSnapshot: Sendable {
 final class LayerworksDocument: ReferenceFileDocument {
     typealias Snapshot = ProjectSnapshot
 
-    nonisolated static var readableContentTypes: [UTType] { [.layerworksProject] }
-    nonisolated static var writableContentTypes: [UTType] { [.layerworksProject] }
+    nonisolated static var readableContentTypes: [UTType] { [.layerworksDocument, .imageProducerProject] }
+    nonisolated static var writableContentTypes: [UTType] { [.layerworksDocument] }
 
     @Published var manifest: ProjectManifest { didSet { if manifest.layers != oldValue.layers ||
         manifest.canvasWidth != oldValue.canvasWidth || manifest.canvasHeight != oldValue.canvasHeight { render() } } }
@@ -155,6 +160,18 @@ final class LayerworksDocument: ReferenceFileDocument {
         if index < m.historyCursor { m.historyCursor -= 1 }
         manifest = m
         markEdited(undoManager)
+    }
+
+    /// Optimize History (005 / 037, his lock 13:11): lossless — every step stays; pictures no
+    /// step uses any more are dropped. Returns the bytes freed (0 = already as small as it gets).
+    @discardableResult
+    func optimizeHistory(undoManager: UndoManager?) -> Int {
+        let used = PackageLayout.referencedImages(manifest)
+        let freed = blobs.filter { !used.contains($0.key) }.reduce(0) { $0 + $1.value.count }
+        guard freed > 0 else { return 0 }
+        blobs = blobs.filter { used.contains($0.key) }
+        markEdited(undoManager)
+        return freed
     }
 
     /// Purge History: keep the picture, erase the steps (asked first).

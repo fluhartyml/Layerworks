@@ -200,7 +200,6 @@ struct HistoryPanel: View {
     @ObservedObject var editor: EditorState
     @Environment(\.undoManager) private var undoManager
     @State private var confirmKeep = false
-    @State private var confirmPurge = false
     @State private var confirmDelete: Int?
 
     /// Selecting a row looks at that step (037: looking changes nothing).
@@ -255,7 +254,9 @@ struct HistoryPanel: View {
                         .help("Keep the picture as it is here and delete the newer steps")
                 }
                 Spacer(minLength: 0)
-                Button("Purge History…") { confirmPurge = true }
+                Button("Optimize History") { editor.optimize(document, undoManager: undoManager) }
+                    .help("Shrink History without losing a step")
+                Button("Purge History…") { editor.askPurge = true }
                     .disabled(document.history.count < 2)
                     .help("Keep the picture and erase the steps")
             }
@@ -269,12 +270,6 @@ struct HistoryPanel: View {
                 editor.status = "Kept this step; newer steps deleted"
             }
         } message: { Text("The picture stays as it is now. This can't be undone.") }
-        .confirmationDialog("Purge History?", isPresented: $confirmPurge, titleVisibility: .visible) {
-            Button("Purge History", role: .destructive) {
-                document.purgeHistory(undoManager: undoManager)
-                editor.status = "History purged; the picture is kept"
-            }
-        } message: { Text("The picture is kept. Every History step is erased. This can't be undone.") }
         .confirmationDialog("Delete this step?", isPresented: Binding(get: { confirmDelete != nil },
                                                                       set: { if !$0 { confirmDelete = nil } }),
                             titleVisibility: .visible) {

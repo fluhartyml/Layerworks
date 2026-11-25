@@ -22,6 +22,7 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var document: LayerworksDocument
     @StateObject private var editor = EditorState()
+    @Environment(\.undoManager) private var undoManager
     // Every setting and pane state persists across launches (his rule).
     @AppStorage("lw.inspector.visible") private var showInspector = true
 
@@ -74,6 +75,13 @@ struct ContentView: View {
             }
         }
         .focusedSceneObject(editor)
+        .focusedSceneObject(document)
+        .confirmationDialog("Purge History?", isPresented: $editor.askPurge, titleVisibility: .visible) {
+            Button("Purge History", role: .destructive) {
+                document.purgeHistory(undoManager: undoManager)
+                editor.status = "History purged; the picture is kept"
+            }
+        } message: { Text("The picture is kept. Every History step is erased. This can't be undone.") }
         .onAppear { editor.status = "Opened a \(document.manifest.canvasWidth) × \(document.manifest.canvasHeight) canvas" }
     }
 
