@@ -273,6 +273,48 @@ final class LayerworksUITests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
         #endif
     }
+
+    /// Build step 4d1 (Blueprint 045): Move by typed position, Done keeps it on a new layer with
+    /// the original hidden, Undo steps back, Crop makes a "(Crop 1)" layer, leaving the tool commits.
+    @MainActor
+    func testMoveAndCrop() throws {
+        let app = XCUIApplication()
+        app.launch()
+        #if os(macOS)
+        app.typeKey("n", modifierFlags: .command)
+        showInspector(app)
+        let status = app.descendants(matching: .any)["Status"].firstMatch
+        XCTAssertTrue(app.buttons["Text"].firstMatch.waitForExistence(timeout: 10))
+        app.radioButtons["Layers"].firstMatch.click()
+        app.buttons["Text"].firstMatch.click()
+        let words = app.textFields["Text"].firstMatch
+        words.click()
+        words.typeText("Hi\r")
+        XCTAssertTrue(app.buttons["Hi"].firstMatch.waitForExistence(timeout: 5))
+
+        app.buttons["Move"].firstMatch.click()
+        let x = app.textFields["X"].firstMatch
+        XCTAssertTrue(x.waitForExistence(timeout: 5), "Move shows the typed position")
+        x.click()
+        x.typeKey("a", modifierFlags: .command)
+        x.typeText("10\t")
+        app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue((status.value as? String ?? "").hasPrefix("Moved “Hi” to 10,"), "Done keeps the move: \(status.value ?? "")")
+        XCTAssertTrue(app.buttons["Show Hi"].firstMatch.exists, "the original stays underneath, hidden")
+        app.descendants(matching: .any)["Canvas picture"].firstMatch.click()
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertFalse(app.buttons["Show Hi"].firstMatch.waitForExistence(timeout: 2), "Undo takes the move back")
+
+        app.buttons["Nudge Right"].firstMatch.click()
+        app.buttons["Palette"].firstMatch.click()
+        XCTAssertTrue((status.value as? String ?? "").hasPrefix("Moved “Hi”"), "leaving the tool keeps the change")
+
+        app.buttons["Move"].firstMatch.click()
+        app.radioButtons["Crop"].firstMatch.click()
+        app.buttons["Apply Crop"].firstMatch.click()
+        XCTAssertTrue(app.buttons["Hi (Crop 1)"].firstMatch.waitForExistence(timeout: 5), "Apply Crop makes a new layer")
+        #endif
+    }
 }
 
 /// A static text's words: macOS reports them as the value, iOS as the label.

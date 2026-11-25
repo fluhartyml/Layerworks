@@ -32,6 +32,8 @@ final class EditorState: ObservableObject {
     @Published var magicColor: String?
     /// Purge History asks first, from the History tab or File ▸ Purge History….
     @Published var askPurge = false
+    /// Move / Crop in progress (045); committed when the tool is left.
+    @Published var moveDraft: MoveDraft?
 
     func optimize(_ document: LayerworksDocument, undoManager: UndoManager?) {
         let freed = document.optimizeHistory(undoManager: undoManager)

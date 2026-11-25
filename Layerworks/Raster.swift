@@ -36,8 +36,8 @@ nonisolated struct Bitmap {
                 ctx.setFillColor(color); ctx.fill(rect)
             }
             if let key = flat.image, let data = blobs[key], let picture = Compositor.decode(data) {
-                ctx.draw(picture, in: Compositor.drawRect(flat.frame, canvasWidth: canvasWidth,
-                                                          canvasHeight: canvasHeight, into: rect))
+                Compositor.drawPicture(picture, layer: flat, canvasWidth: canvasWidth,
+                                       canvasHeight: canvasHeight, in: ctx, rect: rect)
             }
         }
     }

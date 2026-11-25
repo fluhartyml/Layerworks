@@ -15,13 +15,14 @@ import UniformTypeIdentifiers
 // Only finished tools are in the box (his rule: no placeholders) — each step-4 slice adds its own.
 
 enum Tool: String, CaseIterable, Identifiable {
-    case canvas, palette, bucket, pen, eraser, eyedropper, text, symbol, image
+    case canvas, palette, move, bucket, pen, eraser, eyedropper, text, symbol, image
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .canvas: "Canvas"
         case .palette: "Palette"
+        case .move: "Move"
         case .bucket: "Paint Bucket"
         case .pen: "Pen"
         case .eraser: "Eraser"
@@ -37,6 +38,7 @@ enum Tool: String, CaseIterable, Identifiable {
         switch self {
         case .canvas: "CanvasTool"
         case .palette: "PaletteTool"
+        case .move: "MoveTool"
         case .bucket: "BucketTool"
         case .pen: "PixelArtPenTool"
         case .eraser: "PinkEraser"
@@ -117,6 +119,7 @@ struct ToolButton: View {
 struct ToolInspector: View {
     @ObservedObject var document: LayerworksDocument
     @ObservedObject var editor: EditorState
+    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
         Form {
@@ -129,6 +132,7 @@ struct ToolInspector: View {
             switch editor.tool {
             case .canvas: CanvasToolView(document: document, editor: editor)
             case .palette: PaletteToolView(document: document, editor: editor)
+            case .move: MoveToolView(document: document, editor: editor)
             case .bucket: BucketToolView(document: document, editor: editor)
             case .pen: PenToolView(document: document, editor: editor)
             case .eraser: EraserToolView(document: document, editor: editor)
@@ -142,6 +146,10 @@ struct ToolInspector: View {
             }
         }
         .formStyle(.grouped)
+        // 045: leaving the Move tool keeps the change.
+        .onChange(of: editor.tool) { old, _ in
+            if old == .move { editor.commitMove(document, undoManager: undoManager) }
+        }
     }
 }
 
@@ -265,9 +273,11 @@ struct CanvasToolView: View {
             HStack {
                 Button("Apply Size") { apply(width, height) }
                     .disabled(width == document.manifest.canvasWidth && height == document.manifest.canvasHeight)
+                    .buttonStyle(.borderless)
                 Spacer()
                 Button("Swap Width and Height") { apply(document.manifest.canvasHeight, document.manifest.canvasWidth) }
                     .disabled(document.manifest.canvasWidth == document.manifest.canvasHeight)
+                    .buttonStyle(.borderless)
                     .help("Landscape ↔ portrait. A square does not change.")
             }
             Menu("Size Presets") {
@@ -346,6 +356,7 @@ struct PaletteToolView: View {
                     editor.status = "Added a color"
                 }
                 .disabled(colors.count >= Palette.maximum)
+                .buttonStyle(.borderless)
                 Spacer()
                 Button("Remove") {
                     var next = colors
@@ -355,6 +366,7 @@ struct PaletteToolView: View {
                     editor.status = "Removed a color"
                 }
                 .disabled(colors.count <= Palette.minimum)
+                .buttonStyle(.borderless)
             }
         } header: { Text("Colors") }
 

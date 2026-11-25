@@ -76,6 +76,12 @@ struct ContentView: View {
         }
         .focusedSceneObject(editor)
         .focusedSceneObject(document)
+        // Undo / History can remove the selected layer; something is always selected (036).
+        .onChange(of: document.manifest.layers) { _, layers in
+            if !layers.contains(where: { $0.id == editor.selectedLayer }) {
+                editor.selectedLayer = layers.last { $0.role == .content && $0.isVisible }?.id ?? layers.last?.id
+            }
+        }
         .confirmationDialog("Purge History?", isPresented: $editor.askPurge, titleVisibility: .visible) {
             Button("Purge History", role: .destructive) {
                 document.purgeHistory(undoManager: undoManager)

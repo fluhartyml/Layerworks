@@ -44,6 +44,8 @@ nonisolated struct Layer: Identifiable, Codable, Equatable, Sendable {
     var frame: PixelRect?
     /// Pen (Pixels) square size for this layer, in canvas pixels (050: each layer has its own).
     var gridSize: Int?
+    /// Turn in degrees around the frame's center (045: Rotation slider). nil = upright.
+    var rotation: Double?
     /// A text layer's words and style (053). Its picture is drawn from this, so it stays editable.
     var text: TextContent?
     /// A symbol layer's SF Symbol and color (054).
@@ -317,7 +319,7 @@ nonisolated enum Compositor {
                 ctx.fill(rect)
             }
             if let key = layer.image, let data = blobs[key], let picture = decode(data) {
-                ctx.draw(picture, in: drawRect(layer.frame, canvasWidth: width, canvasHeight: height, into: rect))
+                drawPicture(picture, layer: layer, canvasWidth: width, canvasHeight: height, in: ctx, rect: rect)
             }
             ctx.restoreGState()
         }
@@ -329,6 +331,18 @@ nonisolated enum Compositor {
         guard let image = image(layers: layers, blobs: blobs, width: width, height: height,
                                 maxSide: maxSide, onlyVisible: onlyVisible) else { return nil }
         return pngData(image)
+    }
+
+    /// Draws a layer's picture in its frame, turned by its rotation.
+    static func drawPicture(_ picture: CGImage, layer: Layer, canvasWidth: Int, canvasHeight: Int,
+                            in ctx: CGContext, rect: CGRect) {
+        let r = drawRect(layer.frame, canvasWidth: canvasWidth, canvasHeight: canvasHeight, into: rect)
+        guard let deg = layer.rotation, deg != 0 else { ctx.draw(picture, in: r); return }
+        ctx.saveGState()
+        ctx.translateBy(x: r.midX, y: r.midY)
+        ctx.rotate(by: -deg * .pi / 180)   // clockwise on screen (y is up in the context)
+        ctx.draw(picture, in: CGRect(x: -r.width / 2, y: -r.height / 2, width: r.width, height: r.height))
+        ctx.restoreGState()
     }
 
     /// A layer frame (canvas pixels, top-left origin) in a context of `rect` (bottom-left origin).

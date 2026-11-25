@@ -25,6 +25,7 @@ struct CanvasView: View {
                     .frame(width: pixelWidth * editor.zoom, height: pixelHeight * editor.zoom)
                     .accessibilityIdentifier("Canvas picture")
                     .overlay { CanvasInteraction(document: document, editor: editor) }
+                    .overlay { if editor.tool == .move { MoveOverlay(document: document, editor: editor) } }
                     .shadow(color: .black.opacity(0.25), radius: 2)
                     .padding(EditorState.margin)
                     .frame(minWidth: proxy.size.width, minHeight: proxy.size.height)
