@@ -10,13 +10,13 @@ import Foundation
 
 enum BuildStamp {
     /// Short SHA of HEAD when this build was stamped. "+" suffix = uncommitted changes.
-    static let commit = "66d1900"
+    static let commit = "33776c1"
 
     /// Branch HEAD was on when this build was stamped.
     static let branch = "main"
 
     /// Local time the stamp was generated — effectively the build time.
-    static let built = "2026-11-25 17:22"
+    static let built = "2026-11-25 20:08"
 
     /// CFBundleVersion — set from the commit count by the post-commit hook.
     static var buildNumber: String {

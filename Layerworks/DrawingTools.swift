@@ -67,11 +67,12 @@ struct PenToolView: View {
             .pickerStyle(.segmented)
             if let id = editor.selectedLayer, let layer = document.layer(id) {
                 HStack {
-                    Text("Square size")
+                    // One label, one line (it wrapped on the iPad mini when split in two).
                     Stepper(value: Binding(get: { editor.gridSize(for: layer, in: document) },
                                            set: { document.setGridSize(id, $0, undoManager: undoManager) }),
                             in: 1...512) {
-                        Text("\(editor.gridSize(for: layer, in: document)) px").monospacedDigit()
+                        Text("Square size \(editor.gridSize(for: layer, in: document)) px").monospacedDigit()
+                            .lineLimit(1).minimumScaleFactor(0.8)
                     }
                     .accessibilityLabel("Square size")
                     InfoTip(text: "Each layer keeps its own square size, like its own sheet of graph paper.")
