@@ -11,7 +11,7 @@ import UniformTypeIdentifiers
 // REM: Blueprint 029 / 007 — the tool box sits under the canvas in TWO rows (locked 2026-11-25:
 // "Claude must make two rows work on the 390-pt 16e and the closed Duo, not fall back to three").
 // The chosen tool is tinted; on the Mac, hover shows its name. The icons are Image Producer's
-// own tool images, copied byte for byte (his word 2026-11-25: "use the original assets and icons").
+// HYBRID strip (see REM on `asset`): SF Symbols, plus Text and Image's own art byte for byte.
 // Only finished tools are in the box (his rule: no placeholders) — each step-4 slice adds its own.
 
 enum Tool: String, CaseIterable, Identifiable {
@@ -41,21 +41,18 @@ enum Tool: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Image Producer's own tool image, where it had one (copied byte for byte).
+    // REM: HYBRID TOOL BOX — his call 2026-08-21 in Image Producer (commit 55fb54a), after seeing
+    // all three strips side by side: "commit the hybrid please". Only Text (the Aa book — "i like
+    // the book behind the Aa") and Image (a caricature of a good friend of his) keep hand-drawn
+    // art; every other tool is an SF Symbol. Layerworks first copied the pre-hybrid images —
+    // his word 2026-11-26: "theyre not supposed to be images, the images are stale leftovers".
+    // Never swap these two out for consistency; they stand out on purpose.
+    /// The two tools that keep hand-drawn art; every other tool uses its SF Symbol.
     var asset: String? {
         switch self {
-        case .selection, .mask, .lasso, .layer, .cutout, .adjust, .camera: nil
-        case .playground: "ImagePlayground"
-        case .canvas: "CanvasTool"
-        case .palette: "PaletteTool"
-        case .move: "MoveTool"
-        case .bucket: "BucketTool"
-        case .pen: "PixelArtPenTool"
-        case .eraser: "PinkEraser"
-        case .eyedropper: "ColorSampleEyeDropper"
         case .text: "FontBook"
-        case .symbol: "SFPickerTool"
         case .image: "PhotoTool"
+        default: nil
         }
     }
 }
@@ -102,9 +99,20 @@ struct ToolCommands: Commands {
 }
 
 extension Tool {
-    /// Image Producer's SF Symbols for the tools that had no image of their own.
+    /// Image Producer's SF Symbol for each tool (its EditorTools.systemImage, name for name).
     var symbol: String {
         switch self {
+        case .canvas: "photo.artframe"
+        case .palette: "paintpalette"
+        case .move: "arrow.up.and.down.and.arrow.left.and.right"
+        case .bucket: "drop.fill"
+        case .pen: "pencil.tip"
+        case .eraser: "eraser.fill"
+        case .eyedropper: "eyedropper"
+        case .text: "textformat"
+        case .symbol: "star.fill"
+        case .image: "photo"
+        case .playground: "apple.image.playground"
         case .selection: "rectangle.dashed"
         case .mask: "theatermasks"
         case .lasso: "lasso.badge.sparkles"
@@ -112,7 +120,6 @@ extension Tool {
         case .cutout: "person.and.background.dotted"
         case .adjust: "slider.horizontal.3"
         case .camera: "camera"
-        default: "questionmark.square"
         }
     }
 }
