@@ -25,7 +25,25 @@ struct ContentView: View {
     @StateObject private var editor = EditorState()
     @Environment(\.undoManager) private var undoManager
     // Every setting and pane state persists across launches (his rule).
-    @AppStorage("lw.inspector.visible") private var showInspector = true
+    @AppStorage("lw.inspector.visible") private var showInspectorWide = true
+    // REM: iPhone only (idiom .phone) — there the inspector is a sheet over the whole window, and
+    // a new picture opened with the canvas and tool box hidden under it (found 2026 NOV 25 by a
+    // Simulator drag test: the stroke landed on the Layers list). On iPhone it starts closed and
+    // opens as a half sheet with the canvas above still usable. Mac and iPad are unchanged.
+    @AppStorage("lw.inspector.visible.phone") private var showInspectorPhone = false
+
+    private var isPhone: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
+        #endif
+    }
+
+    private var showInspector: Bool {
+        get { isPhone ? showInspectorPhone : showInspectorWide }
+        nonmutating set { if isPhone { showInspectorPhone = newValue } else { showInspectorWide = newValue } }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -56,6 +74,10 @@ struct ContentView: View {
         .inspector(isPresented: inspectorBinding) {
             InspectorColumn(document: document, editor: editor)
             .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
+            // Only matters where the inspector is a sheet (iPhone): half height first, the canvas
+            // above it keeps working.
+            .presentationDetents([.medium, .large])
+            .presentationBackgroundInteraction(.enabled(upThrough: .medium))
         }
         .toolbar {
             // 030: on the document bar, Export and Share only (About is in the app menu).

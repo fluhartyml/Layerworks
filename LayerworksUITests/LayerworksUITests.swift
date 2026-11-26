@@ -362,6 +362,7 @@ final class LayerworksUITests: XCTestCase {
         app.buttons["Magic Lasso"].firstMatch.click()
         canvas.click()
         XCTAssertTrue(app.buttons["Layer 1 (Lasso 1)"].firstMatch.waitForExistence(timeout: 5), "the first clear starts one layer")
+        sleep(1)   // two canvas clicks this close can read as a double-click
         canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.2)).click()
         XCTAssertTrue(waitFor(status, "Cleared another area"), "a second clear on a different area")
         XCTAssertFalse(app.buttons["Layer 1 (Lasso 2)"].exists, "later clears land on the same layer")
@@ -535,6 +536,35 @@ final class LayerworksUITests: XCTestCase {
             // Under the robot (LW_ROBOT) the export skips the save panel and goes to the app's Robot Exports folder.
             XCTAssertTrue(waitFor(status, "Exported \(file)"), "\(format) exported, status: \(status.value ?? "")")
         }
+        #endif
+    }
+
+    /// Drawing by DRAGGING (050), on iPhone: the Mac robot's drags never reach the canvas, but the
+    /// Simulator sends real touches. A stroke across the canvas must draw more than one square.
+    @MainActor
+    func testPenDragDrawsOniPhone() throws {
+        #if os(iOS)
+        let app = XCUIApplication()
+        app.launch()
+        let create = app.buttons["Create Document"].firstMatch
+        if create.waitForExistence(timeout: 10) { create.tap() }
+        let pen = app.buttons["Pen"].firstMatch
+        XCTAssertTrue(pen.waitForExistence(timeout: 10), "the tool box has Pen\n\(app.debugDescription)")
+        pen.tap()
+        let canvas = app.descendants(matching: .any)["Canvas picture"].firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 5))
+        let from = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5))
+        let to = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
+        let shot = XCTAttachment(screenshot: app.screenshot()); shot.lifetime = .keepAlways; shot.name = "before-drag"; add(shot)
+        print("CANVASFRAME", canvas.frame, "WINDOW", app.windows.firstMatch.frame)
+        from.press(forDuration: 0.1, thenDragTo: to)
+        let status = app.descendants(matching: .any)["Status"].firstMatch
+        let drew = NSPredicate(format: "label BEGINSWITH 'Drew ' OR value BEGINSWITH 'Drew '")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: drew, object: status)], timeout: 10),
+                       .completed, "a drag draws: \(status.label) \(status.value ?? "")")
+        let words = (status.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? status.label
+        let count = Int(words.split(separator: " ").dropFirst().first ?? "") ?? 0
+        XCTAssertGreaterThan(count, 1, "a stroke draws a line of squares, not one: \(words)")
         #endif
     }
 

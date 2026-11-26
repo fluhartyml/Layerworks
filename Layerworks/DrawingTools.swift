@@ -293,7 +293,7 @@ struct CanvasInteraction: View {
                 }
             }
             select(document.fork(id, into: b, label: "Pixel", title: "Pen / Pixels", undoManager: undoManager),
-                   erase ? "Erased squares" : "Drew squares")
+                   "\(erase ? "Erased" : "Drew") \(cells.count) square\(cells.count == 1 ? "" : "s")")
         case .eraser:
             if eraserMode == .magic {
                 guard let b = document.bitmap(of: id), b.contains(x, y) else { return }
